@@ -116,7 +116,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
    * @param connectionPort the jSerialComm port
    * @return this instance for method chaining
    */
-  public J setConnectionPort(SerialPort connectionPort)
+  public @org.jspecify.annotations.NonNull J setConnectionPort(SerialPort connectionPort)
   {
     this.connectionPort = connectionPort;
     return (J) this;
@@ -276,7 +276,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
    * @param comPort the COM port number (e.g., 1 for COM1)
    * @return this instance for method chaining
    */
-  public J setComPort(int comPort)
+  public @org.jspecify.annotations.NonNull J setComPort(int comPort)
   {
     this.comPort = comPort;
     return (J) this;
@@ -517,14 +517,14 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
-  public J setXOnXOff()
+  public @org.jspecify.annotations.NonNull J setXOnXOff()
   {
     connectionPort.setFlowControl(SerialPort.FLOW_CONTROL_XONXOFF_IN_ENABLED | SerialPort.FLOW_CONTROL_XONXOFF_OUT_ENABLED);
     getLog().debug("📋 Configured flow control: XON/XOFF for '{}'", getComPortName());
     return (J) this;
   }
 
-  public J setRts()
+  public @org.jspecify.annotations.NonNull J setRts()
   {
     connectionPort.setFlowControl(SerialPort.FLOW_CONTROL_RTS_ENABLED | SerialPort.FLOW_CONTROL_CTS_ENABLED);
     getLog().debug("📋 Configured flow control: RTS/CTS for '{}'", getComPortName());
@@ -532,7 +532,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   }
 
 
-  public J setDsr()
+  public @org.jspecify.annotations.NonNull J setDsr()
   {
     connectionPort.setFlowControl(SerialPort.FLOW_CONTROL_DSR_ENABLED | SerialPort.FLOW_CONTROL_DTR_ENABLED);
     getLog().debug("📋 Configured flow control: DSR/DTR for '{}'", getComPortName());
@@ -567,7 +567,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
-  public J setComPortStatus(ComPortStatus comPortStatus, boolean... update)
+  public @org.jspecify.annotations.NonNull J setComPortStatus(ComPortStatus comPortStatus, boolean... update)
   {
     if (this.comPortStatus != comPortStatus && (
         (update != null && update.length == 0) ||
@@ -726,19 +726,19 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     }
   }
 
-  public J setComPort(Integer comPort)
+  public @org.jspecify.annotations.NonNull J setComPort(Integer comPort)
   {
     this.comPort = comPort;
     return (J) this;
   }
 
-  public J setBaudRate(BaudRate baudRate)
+  public @org.jspecify.annotations.NonNull J setBaudRate(BaudRate baudRate)
   {
     this.baudRate = baudRate;
     return (J) this;
   }
 
-  public J setComPortStatus(ComPortStatus comPortStatus)
+  public @org.jspecify.annotations.NonNull J setComPortStatus(ComPortStatus comPortStatus)
   {
     if (this.comPortStatus != comPortStatus && this.comPortStatusUpdate != null)
     {
@@ -749,55 +749,55 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
-  public J setComPortType(ComPortType comPortType)
+  public @org.jspecify.annotations.NonNull J setComPortType(ComPortType comPortType)
   {
     this.comPortType = comPortType;
     return (J) this;
   }
 
-  public J setDataBits(DataBits dataBits)
+  public @org.jspecify.annotations.NonNull J setDataBits(DataBits dataBits)
   {
     this.dataBits = dataBits;
     return (J) this;
   }
 
-  public J setFlowControl(FlowControl flowControl)
+  public @org.jspecify.annotations.NonNull J setFlowControl(FlowControl flowControl)
   {
     this.flowControl = flowControl;
     return (J) this;
   }
 
-  public J setParity(Parity parity)
+  public @org.jspecify.annotations.NonNull J setParity(Parity parity)
   {
     this.parity = parity;
     return (J) this;
   }
 
-  public J setStopBits(StopBits stopBits)
+  public @org.jspecify.annotations.NonNull J setStopBits(StopBits stopBits)
   {
     this.stopBits = stopBits;
     return (J) this;
   }
 
-  public J setBufferSize(Integer bufferSize)
+  public @org.jspecify.annotations.NonNull J setBufferSize(Integer bufferSize)
   {
     this.bufferSize = bufferSize;
     return (J) this;
   }
 
-  public J setWriter(OutputStream writer)
+  public @org.jspecify.annotations.NonNull J setWriter(OutputStream writer)
   {
     this.writer = writer;
     return (J) this;
   }
 
-  public J setComPortStatusUpdate(BiConsumer<CerialPortConnection<?>, ComPortStatus> comPortStatusUpdate)
+  public @org.jspecify.annotations.NonNull J setComPortStatusUpdate(BiConsumer<CerialPortConnection<?>, ComPortStatus> comPortStatusUpdate)
   {
     this.comPortStatusUpdate = comPortStatusUpdate;
     return (J) this;
   }
 
-  public J setComPortRead(BiConsumer<byte[], com.fazecast.jSerialComm.SerialPort> comPortRead)
+  public @org.jspecify.annotations.NonNull J setComPortRead(BiConsumer<byte[], com.fazecast.jSerialComm.SerialPort> comPortRead)
   {
     if (this.serialPortMessageListener == null)
     {
@@ -809,19 +809,19 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
-  public J setComPortError(TriConsumer<Throwable, CerialPortConnection<?>, ComPortStatus> comPortError)
+  public @org.jspecify.annotations.NonNull J setComPortError(TriConsumer<Throwable, CerialPortConnection<?>, ComPortStatus> comPortError)
   {
     this.comPortError = comPortError;
     return (J) this;
   }
 
-  public J setMonitor(CerialIdleMonitor monitor)
+  public @org.jspecify.annotations.NonNull J setMonitor(CerialIdleMonitor monitor)
   {
     this.monitor = monitor;
     return (J) this;
   }
 
-  public J setLastMessageTime(LocalDateTime lastMessageTime)
+  public @org.jspecify.annotations.NonNull J setLastMessageTime(LocalDateTime lastMessageTime)
   {
     this.lastMessageTime = lastMessageTime;
     return (J) this;
