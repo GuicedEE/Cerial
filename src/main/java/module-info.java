@@ -1,6 +1,5 @@
 import com.guicedee.cerial.implementations.CerialPortsBindings;
-import com.guicedee.guicedinjection.interfaces.IGuiceModule;
-import com.guicedee.guicedinjection.interfaces.Log4JConfigurator;
+import com.guicedee.client.services.lifecycle.IGuiceModule;
 
 module com.guicedee.cerial {
     requires static lombok;

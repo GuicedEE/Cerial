@@ -5,7 +5,7 @@ import com.google.inject.Key;
 import com.google.inject.Singleton;
 import com.google.inject.name.Names;
 import com.guicedee.cerial.CerialPortConnection;
-import com.guicedee.guicedinjection.interfaces.IGuiceModule;
+import com.guicedee.client.services.lifecycle.IGuiceModule;
 import lombok.extern.java.Log;
 
 /**
