@@ -1,88 +1,60 @@
 # GuicedCerial
 
-A Serial/USB Port connector integrated with Google Guice for dependency injection.
+A GuicedEE serial-port utility that exposes CRTP-fluent `CerialPortConnection` instances for applications that need jSerialComm-level control.
 
 ## Overview
 
-GuicedCerial is a module that provides serial port communication capabilities for GuicedEE applications. It integrates with the GuicedInjection framework to provide dependency injection and lifecycle management for serial port connections.
+GuicedCerial integrates with GuicedInjection, Log4j2, and Vert.x 5 to provide lifecycle-aware serial connectivity. The library exposes a JPMS-friendly module (`com.guicedee.cerial`), a collection of enumerations for baud rate/parity/flow control, and helper bindings that supply `CerialPortConnection` singletons for every COM port number.
 
-The module uses the jSerialComm library for low-level serial port communication and provides a higher-level API for configuring, connecting to, and communicating with serial ports. It supports various serial port parameters such as baud rate, data bits, parity, stop bits, and flow control, and provides mechanisms for handling connection status changes and data events.
+## Getting started
 
-## Features
-
-- Easy integration with Google Guice for dependency injection
-- Support for various serial port parameters (baud rate, data bits, parity, stop bits, flow control)
-- Event-based communication model
-- Automatic lifecycle management
-- Idle connection monitoring
-- Comprehensive error handling
-- Logging capabilities
-
-## Getting Started
-
-### Maven Dependency
+Include the module as a Maven dependency within the GuicedEE BOM and inject named connections:
 
 ```xml
 <dependency>
-    <groupId>com.guicedee</groupId>
-    <artifactId>guiced-cerial</artifactId>
-    <version>${guicedee.version}</version>
+  <groupId>com.guicedee</groupId>
+  <artifactId>guiced-cerial</artifactId>
 </dependency>
 ```
 
-### Basic Usage
-
-```java
-// Create a connection to COM1 at 9600 baud
-CerialPortConnection connection = new CerialPortConnection(1, BaudRate.$9600);
-
-// Configure the connection
-connection.setDataBits(DataBits.$8)
-          .setParity(Parity.None)
-          .setStopBits(StopBits.$1)
-          .setFlowControl(FlowControl.None);
-
-// Set up data handling
-connection.setComPortRead((data, port) -> {
-    String message = new String(data).trim();
-    System.out.println("Received: " + message);
-});
-
-// Set up status handling
-connection.onComPortStatusUpdate((conn, status) -> {
-    System.out.println("Connection status changed to: " + status);
-});
-
-// Connect to the port
-connection.connect();
-
-// Send data
-connection.write("Hello, world!");
-
-// Disconnect when done
-connection.disconnect();
-```
-
-### Using Dependency Injection
-
 ```java
 @Inject
-@Named("1") // Inject COM1
-private CerialPortConnection com1;
+@Named("1")
+private CerialPortConnection connection;
 
-public void initialize() {
-    com1.setDataBits(DataBits.$8)
-        .setParity(Parity.None)
-        .setStopBits(StopBits.$1)
-        .setFlowControl(FlowControl.None)
-        .connect();
-}
+connection.setBaudRate(BaudRate.$9600)
+          .setDataBits(DataBits.$8)
+          .setFlowControl(FlowControl.None)
+          .connect();
 ```
 
 ## Documentation
 
-For more detailed documentation, see the [GuicedCerial Package Structure Guidelines](../guiced-cerial-rules.md).
+- `PACT.md` — Collaboration agreement for this adoption run.
+- `GLOSSARY.md` — Glossary index that links to Java 25, CRTP, GuicedEE, Lombok, and JSpecify topic glossaries.
+- `RULES.md` / `GUIDES.md` / `IMPLEMENTATION.md` — Rules, how-to guidance, and implementation notes that reference the selected tech stack.
+- `docs/architecture/` — Text-based C4 context/container/component views, two sequence diagrams, and an ERD; indexed in `docs/architecture/README.md`.
+- `docs/PROMPT_REFERENCE.md` — Records the stacks, glossary coverage, and diagrams that AI agents must load first.
+- `.env.example` — Canonical environment variables aligned with `rules/generative/platform/secrets-config/env-variables.md`.
+- `.github/workflows/maven-package.yml` — GitHub Actions job that uses the shared `GuicedEE/Workflows` workflow for packaging.
+- `.aiassistant/rules/rules.md` / `.github/copilot-instructions.md` — Workspace rules for the selected AI assistants.
+
+## Rules Repository adoption
+
+The `rules/` directory is the Rules Repository submodule. It must remain read-only for host-specific documentation, and you must link to the relevant indexes within it (e.g., `rules/generative/backend/guicedee/README.md`, `rules/generative/language/java/java-25.rules.md`) when describing architecture, APIs, or policy.
+
+## Contributing & support
+
+- Issues/bugs: open a GitHub issue with a minimal reproduction (serial port, OS, jSerialComm version, and log excerpt). Include relevant `ComPortStatus` transitions and listener output if possible.
+- Pull requests: keep changes forward-only, update `PACT.md`, `RULES.md`, `GUIDES.md`, `IMPLEMENTATION.md`, and `docs/architecture/` when altering APIs or behaviors. Follow CRTP (no builders) and JSpecify nullness.
+- Tests: prefer JUnit Jupiter; avoid blocking Vert.x event loops in listener/idle-monitor tests.
+- Security/coordination: if reporting sensitive issues, avoid filing public details until coordinated; include contact info in the issue description.
+
+## Environment & CI
+
+- `.env.example` documents the required environment variables (oauth, DB, logging/tracing toggles).
+- GitHub Actions are defined in `.github/workflows/maven-package.yml`; secrets such as `USERNAME`, `USER_TOKEN`, `SONA_USERNAME`, and `SONA_PASSWORD` are injected from the repository environment and referenced in `GUIDES.md`.
 
 ## License
 
-This project is licensed under the terms of the [LICENSE](LICENSE) file included in the repository.
+This project is licensed under Apache 2.0 (see `LICENSE`).
