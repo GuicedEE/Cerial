@@ -9,6 +9,7 @@ public enum ComPortStatus
 {
 	GeneralException("exclamation-circle", "bg-danger", "text-danger"),
 	Missing("engine-warning", "bg-danger", "text-danger"),
+	Failed("engine-warning", "bg-danger", "text-danger"),
 	InUse("wifi-slash", "bg-danger", "text-danger"),
 	Offline("map-marker-alt-slash", "bg-secondary", "text-secondary"),
 	OperationInProgress("spinner", "bg-purple", "text-purple"),

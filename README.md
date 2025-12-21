@@ -1,4 +1,15 @@
-# GuicedCerial
+# 🔌 GuicedCerial
+
+[![JDK](https://img.shields.io/badge/JDK-25%2B-0A7?logo=java)](https://openjdk.org/projects/jdk/25/)
+[![Build](https://img.shields.io/badge/Build-Maven-C71A36?logo=apachemaven)](https://maven.apache.org/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Vert.x](https://img.shields.io/badge/Vert.x-5-4B9)](https://vertx.io/)
+
+## 📚 Docs & Rules
+- Pact: `PACT.md`
+- Rules: `RULES.md`
+- Guides: `GUIDES.md`
+- Architecture: `docs/architecture/README.md`
 
 A GuicedEE serial-port utility that exposes CRTP-fluent `CerialPortConnection` instances for applications that need jSerialComm-level control.
 
@@ -10,14 +21,14 @@ GuicedCerial integrates with GuicedInjection, Log4j2, and Vert.x 5 to provide li
 
 Include the module as a Maven dependency within the GuicedEE BOM and inject named connections:
 
-```xml
+```
 <dependency>
   <groupId>com.guicedee</groupId>
   <artifactId>guiced-cerial</artifactId>
 </dependency>
 ```
 
-```java
+```
 @Inject
 @Named("1")
 private CerialPortConnection connection;

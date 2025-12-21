@@ -8,7 +8,6 @@ import com.google.common.base.Strings;
 import com.guicedee.cerial.CerialPortConnection;
 import com.guicedee.cerial.SerialPortException;
 import com.guicedee.cerial.enumerations.ComPortStatus;
-import com.guicedee.client.scopes.CallScoper;
 import com.guicedee.client.IGuiceContext;
 import com.guicedee.client.utils.LogUtils;
 import com.guicedee.client.scopes.CallScopeProperties;
@@ -129,31 +128,40 @@ public class DataSerialPortMessageListener implements SerialPortMessageListener,
         }
         var vertx =IGuiceContext.get(Vertx.class);
         vertx.executeBlocking(() -> {
-            var callScoper = IGuiceContext.get(CallScoper.class);
-            callScoper.enter();
+            com.guicedee.client.scopes.CallScoper callScoper = null;
+            boolean started = false;
             try
             {
+                callScoper = IGuiceContext.get(com.guicedee.client.scopes.CallScoper.class);
+                if (!callScoper.isStartedScope())
+                {
+                    callScoper.enter();
+                    started = true;
+                }
                 CallScopeProperties properties = IGuiceContext.get(CallScopeProperties.class);
-                properties.setSource(CallScopeSource.SerialPort);
-                properties.getProperties()
-                        .put("ComPort", comPort);
-                properties.getProperties()
-                        .put("CerialPortConnection", this);
+                if (properties.getSource() == null || properties.getSource() == CallScopeSource.Unknown)
+                {
+                    properties.setSource(CallScopeSource.SerialPort);
+                }
+                properties.getProperties().put("ComPort", comPort);
+                properties.getProperties().put("CerialPortConnection", this);
                 getConnection().setComPortStatus(Running);
-                // log.warning(MessageFormat.format("RX : {0}", new String(newData)));
-                //System.out.print("[" + portNumberFormat.format(connection.getComPort()) + "] RX - " + new String(newData));
                 if (comPortRead != null)
                 {
                     comPortRead.accept(newData, comPort);
-                }else {
-                  log.warn("Nowhere to post the message for COM {} : {}",comPort,new String(newData).trim());
+                } else {
+                    log.warn("Nowhere to post the message for COM {} : {}", comPort, new String(newData).trim());
                 }
             } catch (Throwable T)
             {
                 log.error( "Error on ComPort [" + connection.getComPort() + "] Receipt", T);
-            } finally
+            }
+            finally
             {
-                callScoper.exit();
+                if (started && callScoper != null)
+                {
+                    callScoper.exit();
+                }
             }
             return null;
         },false);

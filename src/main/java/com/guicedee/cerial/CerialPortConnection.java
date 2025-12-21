@@ -7,16 +7,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fazecast.jSerialComm.SerialPort;
 import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.google.common.base.Strings;
-import com.google.inject.Inject;
 import com.guicedee.cerial.enumerations.*;
-import com.guicedee.cerial.implementations.*;
-import com.guicedee.client.scopes.CallScoper;
+import com.guicedee.cerial.implementations.ComPortEvents;
+import com.guicedee.cerial.implementations.DataSerialPortMessageListener;
 import com.guicedee.client.IGuiceContext;
-import com.guicedee.client.utils.LogUtils;
 import com.guicedee.client.services.lifecycle.IGuicePreDestroy;
+import com.guicedee.client.utils.LogUtils;
 import com.guicedee.services.jsonrepresentation.IJsonRepresentation;
 import io.vertx.core.Vertx;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.apache.commons.lang3.function.TriConsumer;
 
 import java.io.OutputStream;
@@ -208,11 +210,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   @Setter
   @Getter
   private char[] endOfMessage = new char[]{'\n'};
-
-  @Inject
-  @JsonIgnore
-  CallScoper callScoper;
-
+		
   public J reset()
   {
     baudRate = BaudRate.$9600;
@@ -479,13 +477,10 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
 
   public J beforeConnect()
   {
-    if (callScoper == null)
-    {
       IGuiceContext.instance()
           .inject()
           .injectMembers(this)
       ;
-    }
     getLog().debug("📋 Preparing connection - Port: '{}', Baud: {}, DataBits: {}, Parity: {}, StopBits: {}, Flow: {}",
         getComPortName(), getBaudRate().toInt(), getDataBits(), getParity(), getStopBits(), flow);
     configure(connectionPort);
