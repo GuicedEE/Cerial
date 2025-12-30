@@ -60,6 +60,7 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 		{
 				Delimeter,
 				Pattern,
+				Length,
 				All
 		}
 		
@@ -151,21 +152,22 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 								buffer = new StringBuilder();
 								continue;
 						}
-						boolean appended = false;
+						
+						// Common append logic
+						if (buffer.length() >= maxBufferLength)
+						{
+								log.warn("⚠️ Buffer limit reached on serial port - Port [{}] - Rolling data", getConnection().getComPort());
+								buffer.deleteCharAt(0);
+						}
+						buffer.append((char) b);
+						
+						boolean messageProcessed = false;
+						
+						// 1. Check Pattern
 						if ((mode == Mode.All || mode == Mode.Pattern) && patternMatch != null)
 						{
-								if (buffer.length() >= maxBufferLength)
-								{
-										log.warn("⚠️ Buffer limit reached on serial port - Port [{}] - Rolling data", getConnection().getComPort());
-										buffer.deleteCharAt(0);
-								}
-								buffer.append(String
-																							.valueOf((char) b)
-																							.trim());
-								appended = true;
-								
 								Matcher matcher = patternMatch.matcher(buffer.toString());
-								while (matcher.find())
+								if (matcher.find())
 								{
 										message = matcher.group();
 										try
@@ -173,8 +175,9 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 												if (!Strings.isNullOrEmpty(message))
 												{
 														log.info("📥 RX] - Port [{}] - Message: [{}]", portNumberFormat.format(connection.getComPort()), message);
+														processMessage(message.getBytes());
+														messageProcessed = true;
 												}
-												processMessage(message.getBytes());
 										}
 										catch (Throwable e)
 										{
@@ -183,37 +186,30 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 										buffer = new StringBuilder(buffer.substring(matcher.end()));
 								}
 						}
-						else if (mode == Mode.All || mode == Mode.Delimeter)
+						
+						// 2. Check Delimiter (if not already processed by pattern)
+						if (!messageProcessed && (mode == Mode.All || mode == Mode.Delimeter))
 						{
-								boolean found = false;
+								boolean foundDelimiter = false;
 								for (char delimiterCheck : delimiter)
 								{
-										if (delimiterCheck != b)
+										if (delimiterCheck == b)
 										{
-												found = false;
-										}
-										else
-										{
-												found = true;
+												foundDelimiter = true;
+												break;
 										}
 								}
-								if (!found && !appended)
+								
+								if (foundDelimiter)
 								{
-										if (buffer.length() >= maxBufferLength)
-										{
-												log.warn("⚠️ Buffer limit reached on serial port - Port [{}] - Rolling bytes", getComPort().getDescriptivePortName());
-												buffer.deleteCharAt(0);
-										}
-										buffer.append((char) b);
-										appended = true;
-								}
-								if (found)
-								{
+										// Message is everything in buffer minus the delimiter (optional, depending on how it was handled before)
+										// Looking at previous implementation, it included everything in buffer.
 										message = buffer.toString();
 										try
 										{
 												log.info("RX] - [" + portNumberFormat.format(connection.getComPort()) + "] - [" + message.trim());
 												processMessage(message.getBytes());
+												messageProcessed = true;
 										}
 										catch (Throwable e)
 										{
@@ -223,6 +219,25 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 								}
 						}
 						
+						// 3. Check Length (if not already processed)
+						if (!messageProcessed && (mode == Mode.All || mode == Mode.Length))
+						{
+								if (buffer.length() >= maxBufferLength)
+								{
+										message = buffer.toString();
+										try
+										{
+												log.info("RX] - [" + portNumberFormat.format(connection.getComPort()) + "] - [" + message.trim());
+												processMessage(message.getBytes());
+												messageProcessed = true;
+										}
+										catch (Throwable e)
+										{
+												log.error(e.getMessage(), e);
+										}
+										buffer = new StringBuilder();
+								}
+						}
 				}
 				
 		}
