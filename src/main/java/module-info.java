@@ -24,7 +24,7 @@ module com.guicedee.cerial {
     requires transitive com.guicedee.jsonrepresentation;
 
     exports com.guicedee.cerial;
-    opens com.guicedee.cerial to com.google.guice,com.fasterxml.jackson.databind;
+    opens com.guicedee.cerial to com.google.guice,com.fasterxml.jackson.databind,com.guicedee.health;
 
     exports com.guicedee.cerial.enumerations;
     exports com.guicedee.cerial.implementations;

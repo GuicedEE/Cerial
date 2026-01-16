@@ -31,7 +31,7 @@ public class CerialIdleMonitor
 {
     /** The serial port connection being monitored. */
     @JsonIgnore
-    private final CerialPortConnection connection;
+    private final CerialPortConnection<?> connection;
 
     /** The initial delay in seconds before the monitor starts checking for idle time. */
     private int initialDelay;
@@ -60,7 +60,7 @@ public class CerialIdleMonitor
      *
      * @param connection the serial port connection to monitor
      */
-    public CerialIdleMonitor(CerialPortConnection connection)
+    public CerialIdleMonitor(CerialPortConnection<?> connection)
     {
         this.connection = connection;
         previousStatus = connection.getComPortStatus();
@@ -78,7 +78,7 @@ public class CerialIdleMonitor
      * @param period       the period in seconds between checks for idle time
      * @param seconds      the number of seconds after which a connection is considered idle
      */
-    public CerialIdleMonitor(CerialPortConnection connection, int initialDelay, int period, int seconds)
+    public CerialIdleMonitor(CerialPortConnection<?> connection, int initialDelay, int period, int seconds)
     {
         this(connection);
         this.initialDelay = initialDelay;

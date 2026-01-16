@@ -259,6 +259,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     connectionPort.setBaudRate(baudRate.toInt());
     this.idleTimerSeconds = seconds;
     this.setMonitor(new CerialIdleMonitor(this, 2, 120, seconds));
+    CerialConnectionRegistry.register(this);
     CerialPortConnection me = this;
     IGuiceContext.getAllLoadedServices()
         .computeIfAbsent(IGuicePreDestroy.class, k -> new TreeSet<>());
@@ -685,6 +686,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   public void onDestroy()
   {
     getLog().info("⚠️ onDestroy invoked for '{}'", getComPortName());
+    CerialConnectionRegistry.unregister(this);
     if (connectionPort != null)
     {
       if (connectionPort.isOpen())

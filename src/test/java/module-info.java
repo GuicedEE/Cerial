@@ -1,6 +1,7 @@
 module guiced.cerial.test {
     requires com.guicedee.cerial;
     requires com.guicedee.guicedinjection;
+    requires com.guicedee.services.health;
 
     requires org.junit.platform.commons;
     requires org.junit.jupiter.api;
