@@ -28,6 +28,11 @@ import static com.fazecast.jSerialComm.SerialPort.*;
 import static com.guicedee.cerial.CerialPortConnection.portNumberFormat;
 import static com.guicedee.cerial.enumerations.ComPortStatus.Running;
 
+/**
+ * Serial port listener that treats incoming data as message frames separated by a delimiter.
+ * Uses jSerialComm message callbacks and dispatches the payload on a Vertx worker thread with
+ * Guice call-scope metadata populated for downstream handlers.
+ */
 @Getter
 @Setter
 public class DataSerialPortMessageListener implements SerialPortMessageListener, ComPortEvents
@@ -48,6 +53,13 @@ public class DataSerialPortMessageListener implements SerialPortMessageListener,
     
     private char[] delimiter;
 
+    /**
+     * Creates a listener bound to a specific serial port and connection.
+     *
+     * @param delimiter  the message delimiter characters used by jSerialComm
+     * @param comPort    the serial port instance being monitored
+     * @param connection the owning connection for status and error reporting
+     */
     public DataSerialPortMessageListener(char[] delimiter, SerialPort comPort, CerialPortConnection<?> connection)
     {
         this.delimiter = delimiter;
@@ -58,24 +70,46 @@ public class DataSerialPortMessageListener implements SerialPortMessageListener,
                 "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] - [%msg]%n",false);
     }
 
+    /**
+     * Returns the delimiter bytes used by jSerialComm to split messages.
+     *
+     * @return the delimiter bytes, encoded using UTF-8
+     */
     @Override
     public byte[] getMessageDelimiter()
     {
         return new String(delimiter).getBytes(StandardCharsets.UTF_8);
     }
 
+    /**
+     * Indicates the delimiter terminates a message.
+     *
+     * @return true to treat the delimiter as end-of-message
+     */
     @Override
     public boolean delimiterIndicatesEndOfMessage()
     {
         return true;
     }
 
+    /**
+     * Specifies the jSerialComm events this listener wants to receive.
+     *
+     * @return bitmask of listening events
+     */
     @Override
     public int getListeningEvents()
     {
         return LISTENING_EVENT_DATA_RECEIVED | LISTENING_EVENT_PORT_DISCONNECTED | LISTENING_EVENT_BREAK_INTERRUPT | LISTENING_EVENT_FRAMING_ERROR | LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR | LISTENING_EVENT_PARITY_ERROR | LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR;
     }
 
+    /**
+     * Removes all occurrences of a byte value from the array.
+     *
+     * @param array    source byte array
+     * @param toRemove byte value to remove
+     * @return a new byte array without the removed values
+     */
     public static byte[] remove(byte[] array, byte toRemove)
     {
         List<Byte> byteList = new ArrayList<>(Arrays.asList(ArrayUtils.toObject(array)));
@@ -83,6 +117,11 @@ public class DataSerialPortMessageListener implements SerialPortMessageListener,
         return ArrayUtils.toPrimitive(byteList.toArray(new Byte[0]));
     }
 
+    /**
+     * Handles serial port events and routes data or errors to the connection.
+     *
+     * @param event the jSerialComm event
+     */
     @Override
     public void serialEvent(SerialPortEvent event)
     {
@@ -115,6 +154,11 @@ public class DataSerialPortMessageListener implements SerialPortMessageListener,
         }
     }
 
+    /**
+     * Processes a received message payload and dispatches it via the configured consumer.
+     *
+     * @param newData the received message bytes
+     */
     public void processReceivedBytes(byte[] newData)
     {
         remove(newData, (byte) 0);

@@ -9,11 +9,16 @@ import com.guicedee.client.services.lifecycle.IGuiceModule;
 import lombok.extern.java.Log;
 
 /**
- * Binds the range of ports to a singleton provider that will control the injection of the ports
+ * Guice module that binds a range of serial port connections by port number.
+ * Each binding uses a provider that constructs the connection on demand and scopes
+ * it as a singleton for that named port.
  */
 @Log
 public class CerialPortsBindings extends AbstractModule implements IGuiceModule<CerialPortsBindings>
 {
+    /**
+     * Registers bindings for a wide range of serial port numbers.
+     */
     @Override
     protected void configure()
     {

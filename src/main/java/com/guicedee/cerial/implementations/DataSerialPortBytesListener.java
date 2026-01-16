@@ -30,6 +30,11 @@ import static com.fazecast.jSerialComm.SerialPort.*;
 import static com.guicedee.cerial.CerialPortConnection.portNumberFormat;
 import static com.guicedee.cerial.enumerations.ComPortStatus.Running;
 
+/**
+ * Serial port listener that builds messages from raw byte streams using delimiters,
+ * regex patterns, or fixed-length framing, then dispatches messages on a Vertx worker
+ * thread with Guice call-scope metadata populated.
+ */
 @Getter
 @Setter
 public class DataSerialPortBytesListener implements SerialPortDataListenerWithExceptions, ComPortEvents
@@ -56,14 +61,28 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 		
 		private Set<Character> allowedChars = new java.util.HashSet<>();
 		
+		/**
+		 * Message framing modes for parsing incoming bytes.
+		 */
 		public enum Mode
 		{
+				/** Split messages when a delimiter is encountered. */
 				Delimeter,
+				/** Extract messages using a regex pattern. */
 				Pattern,
+				/** Emit messages when the buffer reaches a maximum length. */
 				Length,
+				/** Apply all available framing rules. */
 				All
 		}
 		
+		/**
+		 * Creates a listener bound to a specific serial port and connection.
+		 *
+		 * @param delimiter  the message delimiter characters
+		 * @param comPort    the serial port instance being monitored
+		 * @param connection the owning connection for status and error reporting
+		 */
 		public DataSerialPortBytesListener(char[] delimiter, SerialPort comPort, CerialPortConnection<?> connection)
 		{
 				this.delimiter = delimiter;
@@ -74,12 +93,24 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 																																												"[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] - [%msg]%n", false);
 		}
 		
+		/**
+		 * Specifies the jSerialComm events this listener wants to receive.
+		 *
+		 * @return bitmask of listening events
+		 */
 		@Override
 		public int getListeningEvents()
 		{
 				return LISTENING_EVENT_DATA_RECEIVED | LISTENING_EVENT_PORT_DISCONNECTED | LISTENING_EVENT_BREAK_INTERRUPT | LISTENING_EVENT_FRAMING_ERROR | LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR | LISTENING_EVENT_PARITY_ERROR | LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR;
 		}
 		
+		/**
+		 * Removes all occurrences of a byte value from the array.
+		 *
+		 * @param array    source byte array
+		 * @param toRemove byte value to remove
+		 * @return a new byte array without the removed values
+		 */
 		public byte[] remove(byte[] array, byte toRemove)
 		{
 				List<Byte> byteList = new ArrayList<>(Arrays.asList(ArrayUtils.toObject(array)));
@@ -87,6 +118,11 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 				return ArrayUtils.toPrimitive(byteList.toArray(new Byte[0]));
 		}
 		
+		/**
+		 * Handles serial port events and routes data or errors to the connection.
+		 *
+		 * @param event the jSerialComm event
+		 */
 		@Override
 		public void serialEvent(SerialPortEvent event)
 		{
@@ -129,6 +165,11 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 		
 		private StringBuilder buffer = new StringBuilder();
 		
+		/**
+		 * Processes raw bytes, applies framing rules, and emits messages when complete.
+		 *
+		 * @param newData the received bytes
+		 */
 		public void processReceivedBytes(byte[] newData)
 		{
 				newData = remove(newData, (byte) 0);
@@ -242,6 +283,11 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 				
 		}
 		
+		/**
+		 * Dispatches a parsed message via the configured consumer in a Vertx worker thread.
+		 *
+		 * @param newData the message bytes to deliver
+		 */
 		private void processMessage(byte[] newData)
 		{
 				try
@@ -302,6 +348,11 @@ public class DataSerialPortBytesListener implements SerialPortDataListenerWithEx
 				}
 		}
 		
+		/**
+		 * Handles exceptions raised by jSerialComm during data callbacks.
+		 *
+		 * @param e the exception thrown by the listener
+		 */
 		@Override
 		public void catchException(Exception e)
 		{

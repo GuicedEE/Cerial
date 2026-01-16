@@ -1,3 +1,6 @@
+/**
+ * Serial port integration module that exposes core APIs, enumerations, and Guice bindings.
+ */
 import com.guicedee.cerial.implementations.CerialPortsBindings;
 import com.guicedee.client.services.lifecycle.IGuiceModule;
 
@@ -12,6 +15,8 @@ module com.guicedee.cerial {
     requires org.apache.logging.log4j.core;
     requires org.apache.commons.io;
     requires com.guicedee.guicedinjection;
+
+    requires static com.guicedee.health;
 
     requires transitive com.fazecast.jSerialComm;
     requires transitive org.apache.commons.lang3;
