@@ -8,6 +8,7 @@ import com.google.common.base.Strings;
 import com.guicedee.cerial.CerialPortConnection;
 import com.guicedee.cerial.SerialPortException;
 import com.guicedee.cerial.enumerations.ComPortStatus;
+import com.guicedee.client.annotations.INotInjectable;
 import com.guicedee.client.IGuiceContext;
 import com.guicedee.client.utils.LogUtils;
 import com.guicedee.client.scopes.CallScopeProperties;
@@ -35,6 +36,7 @@ import static com.guicedee.cerial.enumerations.ComPortStatus.Running;
  */
 @Getter
 @Setter
+@INotInjectable
 public class DataSerialPortMessageListener implements SerialPortMessageListener, ComPortEvents
 {
     @JsonIgnore
@@ -170,44 +172,42 @@ public class DataSerialPortMessageListener implements SerialPortMessageListener,
         if (!rxMessage.isEmpty()) {
             log.info("📥 RX - Port {} - Message: {}", portNumberFormat.format(connection.getComPort()), rxMessage);
         }
-        var vertx =IGuiceContext.get(Vertx.class);
+        var vertx = IGuiceContext.get(Vertx.class);
         vertx.executeBlocking(() -> {
             com.guicedee.client.scopes.CallScoper callScoper = null;
             boolean started = false;
-            try
-            {
+            try {
                 callScoper = IGuiceContext.get(com.guicedee.client.scopes.CallScoper.class);
-                if (!callScoper.isStartedScope())
-                {
+                if (!callScoper.isStartedScope()) {
                     callScoper.enter();
                     started = true;
                 }
                 CallScopeProperties properties = IGuiceContext.get(CallScopeProperties.class);
-                if (properties.getSource() == null || properties.getSource() == CallScopeSource.Unknown)
-                {
+                if (properties.getSource() == null || properties.getSource() == CallScopeSource.Unknown) {
                     properties.setSource(CallScopeSource.SerialPort);
                 }
                 properties.getProperties().put("ComPort", comPort);
-                properties.getProperties().put("CerialPortConnection", this);
-                getConnection().setComPortStatus(Running);
-                if (comPortRead != null)
+                properties.getProperties().put("CerialPortConnection", connection);
+                connection.setComPortStatus(Running);
+
+                CerialPortConnection.addBytesRead(newData.length, connection.getComPortName());
+
+                if (IGuiceContext.instance().getScanResult().getClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).loadClasses().stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
                 {
-                    comPortRead.accept(newData, comPort);
-                } else {
-                    log.warn("Nowhere to post the message for COM {} : {}", comPort, new String(newData).trim());
+                    IGuiceContext.get(CerialDataTracer.class).onDataReceived(newData, connection, getComPortRead());
+                }else {
+                    if(getComPortRead() != null)
+                        getComPortRead().accept(newData, getComPort());
                 }
-            } catch (Throwable T)
-            {
-                log.error( "Error on ComPort [" + connection.getComPort() + "] Receipt", T);
-            }
-            finally
-            {
-                if (started && callScoper != null)
-                {
+
+            } catch (Throwable T) {
+                log.error("Error on ComPort [" + connection.getComPort() + "] Receipt", T);
+            } finally {
+                if (started && callScoper != null) {
                     callScoper.exit();
                 }
             }
             return null;
-        },false);
+        }, false);
     }
 }

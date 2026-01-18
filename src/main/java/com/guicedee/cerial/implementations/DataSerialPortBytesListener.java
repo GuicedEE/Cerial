@@ -37,325 +37,278 @@ import static com.guicedee.cerial.enumerations.ComPortStatus.Running;
  */
 @Getter
 @Setter
-public class DataSerialPortBytesListener implements SerialPortDataListenerWithExceptions, ComPortEvents
-{
-		@JsonIgnore
-		private Logger log;
-		@JsonIgnore
-		private BiConsumer<byte[], SerialPort> comPortRead;
-		
-		@JsonIgnore
-		private SerialPort comPort;
-		@JsonIgnore
-		private CerialPortConnection<?> connection;
-		
-		@JsonIgnore
-		private char[] delimiter;
-		
-		@JsonIgnore
-		private Pattern patternMatch;
-		
-		private Mode mode = Mode.Delimeter;
-		
-		private int maxBufferLength = 1024;
-		
-		private Set<Character> allowedChars = new java.util.HashSet<>();
-		
-		/**
-		 * Message framing modes for parsing incoming bytes.
-		 */
-		public enum Mode
-		{
-				/** Split messages when a delimiter is encountered. */
-				Delimeter,
-				/** Extract messages using a regex pattern. */
-				Pattern,
-				/** Emit messages when the buffer reaches a maximum length. */
-				Length,
-				/** Apply all available framing rules. */
-				All
-		}
-		
-		/**
-		 * Creates a listener bound to a specific serial port and connection.
-		 *
-		 * @param delimiter  the message delimiter characters
-		 * @param comPort    the serial port instance being monitored
-		 * @param connection the owning connection for status and error reporting
-		 */
-		public DataSerialPortBytesListener(char[] delimiter, SerialPort comPort, CerialPortConnection<?> connection)
-		{
-				this.delimiter = delimiter;
-				this.comPort = comPort;
-				this.connection = connection;
-				String loggerName = (connection.getComPort() == 0) ? "cerial" : "COM" + connection.getComPort();
-				log = LogUtils.getSpecificRollingLogger(loggerName, "cerial",
-																																												"[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] - [%msg]%n", false);
-		}
-		
-		/**
-		 * Specifies the jSerialComm events this listener wants to receive.
-		 *
-		 * @return bitmask of listening events
-		 */
-		@Override
-		public int getListeningEvents()
-		{
-				return LISTENING_EVENT_DATA_RECEIVED | LISTENING_EVENT_PORT_DISCONNECTED | LISTENING_EVENT_BREAK_INTERRUPT | LISTENING_EVENT_FRAMING_ERROR | LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR | LISTENING_EVENT_PARITY_ERROR | LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR;
-		}
-		
-		/**
-		 * Removes all occurrences of a byte value from the array.
-		 *
-		 * @param array    source byte array
-		 * @param toRemove byte value to remove
-		 * @return a new byte array without the removed values
-		 */
-		public byte[] remove(byte[] array, byte toRemove)
-		{
-				List<Byte> byteList = new ArrayList<>(Arrays.asList(ArrayUtils.toObject(array)));
-				byteList.removeIf(b -> b == toRemove);
-				return ArrayUtils.toPrimitive(byteList.toArray(new Byte[0]));
-		}
-		
-		/**
-		 * Handles serial port events and routes data or errors to the connection.
-		 *
-		 * @param event the jSerialComm event
-		 */
-		@Override
-		public void serialEvent(SerialPortEvent event)
-		{
-				if (event.getEventType() == LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR)
-				{
-						log.error("❌ Software Overrun Error: {}", event.toString());
-						connection.onConnectError(new SerialPortException("Software Overrun Error - " + event.toString()), ComPortStatus.GeneralException);
-				}
-				else if (event.getEventType() == LISTENING_EVENT_PARITY_ERROR)
-				{
-						log.error("❌ Software Parity Error: {}", event.toString());
-						connection.onConnectError(new SerialPortException("Software Parity Error - " + event.toString()), ComPortStatus.GeneralException);
-				}
-				else if (event.getEventType() == LISTENING_EVENT_FRAMING_ERROR)
-				{
-						log.error("❌ Hardware Framing Error: {}", event.toString());
-						connection.onConnectError(new SerialPortException("Hardware Framing Error - " + event.toString()), ComPortStatus.GeneralException);
-				}
-				else if (event.getEventType() == LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR)
-				{
-						log.error("❌ Hardware Firmware Overrun Error: {}", event.toString());
-						connection.onConnectError(new SerialPortException("Hardware Firmware Overrun Error - " + event.toString()), ComPortStatus.GeneralException);
-				}
-				else if (event.getEventType() == LISTENING_EVENT_BREAK_INTERRUPT)
-				{
-						log.error("❌ Hardware Break Interrupt Error: {}", event.toString());
-						connection.onConnectError(new SerialPortException("Hardware Break Interrupt Error - " + event.toString()), ComPortStatus.GeneralException);
-				}
-				else if (event.getEventType() == LISTENING_EVENT_PORT_DISCONNECTED)
-				{
-						log.error("🔌 Port disconnected: {}", event.toString());
-						connection.onConnectError(new SerialPortException("Port disconnected - " + event.toString()), ComPortStatus.Offline);
-				}
-				else if (event.getEventType() == LISTENING_EVENT_DATA_RECEIVED)
-				{
-						byte[] newData = event.getReceivedData();
-						processReceivedBytes(newData);
-				}
-		}
-		
-		private StringBuilder buffer = new StringBuilder();
-		
-		/**
-		 * Processes raw bytes, applies framing rules, and emits messages when complete.
-		 *
-		 * @param newData the received bytes
-		 */
-		public void processReceivedBytes(byte[] newData)
-		{
-				newData = remove(newData, (byte) 0);
-				String message = "";
-				
-				Set<Character> delChars = new java.util.HashSet<>();
-				for (char c : delimiter)
-				{
-						delChars.add(c);
-				}
-				for (byte b : newData)
-				{
-						if (b == 0)
-						{
-								continue;
-						}
-						Character c = (char) b;
-						if ((!allowedChars.isEmpty() && !allowedChars.contains((char) b)) && (delimiter.length > 0 && !delChars.contains(c)))
-						{
-								log.warn("⚠️ Character not allowed on serial port - Port [{}] - Character [{}] - Resetting buffer", getConnection().getComPort(), (char) b);
-								buffer = new StringBuilder();
-								continue;
-						}
-						
-						// Common append logic
-						if (buffer.length() >= maxBufferLength)
-						{
-								log.warn("⚠️ Buffer limit reached on serial port - Port [{}] - Rolling data", getConnection().getComPort());
-								buffer.deleteCharAt(0);
-						}
-						buffer.append((char) b);
-						
-						boolean messageProcessed = false;
-						
-						// 1. Check Pattern
-						if ((mode == Mode.All || mode == Mode.Pattern) && patternMatch != null)
-						{
-								Matcher matcher = patternMatch.matcher(buffer.toString());
-								if (matcher.find())
-								{
-										message = matcher.group();
-										try
-										{
-												if (!Strings.isNullOrEmpty(message))
-												{
-														log.info("📥 RX] - Port [{}] - Message: [{}]", portNumberFormat.format(connection.getComPort()), message);
-														processMessage(message.getBytes());
-														messageProcessed = true;
-												}
-										}
-										catch (Throwable e)
-										{
-												log.error("❌ Error processing received message: {}", e.getMessage(), e);
-										}
-										buffer = new StringBuilder(buffer.substring(matcher.end()));
-								}
-						}
-						
-						// 2. Check Delimiter (if not already processed by pattern)
-						if (!messageProcessed && (mode == Mode.All || mode == Mode.Delimeter))
-						{
-								boolean foundDelimiter = false;
-								for (char delimiterCheck : delimiter)
-								{
-										if (delimiterCheck == b)
-										{
-												foundDelimiter = true;
-												break;
-										}
-								}
-								
-								if (foundDelimiter)
-								{
-										// Message is everything in buffer minus the delimiter (optional, depending on how it was handled before)
-										// Looking at previous implementation, it included everything in buffer.
-										message = buffer.toString();
-										try
-										{
-												log.info("RX] - [" + portNumberFormat.format(connection.getComPort()) + "] - [" + message.trim());
-												processMessage(message.getBytes());
-												messageProcessed = true;
-										}
-										catch (Throwable e)
-										{
-												log.error(e.getMessage(), e);
-										}
-										buffer = new StringBuilder();
-								}
-						}
-						
-						// 3. Check Length (if not already processed)
-						if (!messageProcessed && (mode == Mode.All || mode == Mode.Length))
-						{
-								if (buffer.length() >= maxBufferLength)
-								{
-										message = buffer.toString();
-										try
-										{
-												log.info("RX] - [" + portNumberFormat.format(connection.getComPort()) + "] - [" + message.trim());
-												processMessage(message.getBytes());
-												messageProcessed = true;
-										}
-										catch (Throwable e)
-										{
-												log.error(e.getMessage(), e);
-										}
-										buffer = new StringBuilder();
-								}
-						}
-				}
-				
-		}
-		
-		/**
-		 * Dispatches a parsed message via the configured consumer in a Vertx worker thread.
-		 *
-		 * @param newData the message bytes to deliver
-		 */
-		private void processMessage(byte[] newData)
-		{
-				try
-				{
-						var vertx = IGuiceContext.get(Vertx.class);
-						vertx.executeBlocking(() -> {
-								com.guicedee.client.scopes.CallScoper callScoper = null;
-								boolean started = false;
-								try
-								{
-										callScoper = IGuiceContext.get(com.guicedee.client.scopes.CallScoper.class);
-										if (!callScoper.isStartedScope())
-										{
-												callScoper.enter();
-												started = true;
-										}
-										CallScopeProperties properties = IGuiceContext.get(CallScopeProperties.class);
-										if (properties.getSource() == null || properties.getSource() == CallScopeSource.Unknown)
-										{
-												properties.setSource(CallScopeSource.SerialPort);
-										}
-										properties
-											.getProperties()
-											.put("ComPort", comPort);
-										properties
-											.getProperties()
-											.put("CerialPortConnection", this);
-										getConnection().setComPortStatus(Running);
-										if (comPortRead != null)
-										{
-												try
-												{
-														comPortRead.accept(newData, comPort);
-												}
-												catch (Throwable e)
-												{
-														log.fatal("Fatal error in ComPortRead handler on ComPort [{}]: {}", connection.getComPort(), e.getMessage(), e);
-												}
-										}
-								}
-								catch (Throwable T)
-								{
-										log.error("Error on ComPort [" + connection.getComPort() + "] Receipt", T);
-								}
-								finally
-								{
-										if (started && callScoper != null)
-										{
-												callScoper.exit();
-										}
-								}
-								return true;
-						}, false);
-				}
-				catch (Exception e)
-				{
-						log.error("Error on running bytes serial ComPort [" + connection.getComPort() + "] Receipt", e);
-				}
-		}
-		
-		/**
-		 * Handles exceptions raised by jSerialComm during data callbacks.
-		 *
-		 * @param e the exception thrown by the listener
-		 */
-		@Override
-		public void catchException(Exception e)
-		{
-				log.error("❌ Error on ComPort [{}] Receipt: {}", connection.getComPort(), e.getMessage(), e);
-		}
+public class DataSerialPortBytesListener implements SerialPortDataListenerWithExceptions, ComPortEvents {
+    @JsonIgnore
+    private Logger log;
+    @JsonIgnore
+    private BiConsumer<byte[], SerialPort> comPortRead;
+
+    @JsonIgnore
+    private SerialPort comPort;
+    @JsonIgnore
+    private CerialPortConnection<?> connection;
+
+    @JsonIgnore
+    private char[] delimiter;
+
+    @JsonIgnore
+    private Pattern patternMatch;
+
+    private Mode mode = Mode.Delimeter;
+
+    private int maxBufferLength = 1024;
+
+    private Set<Character> allowedChars = new java.util.HashSet<>();
+
+    /**
+     * Message framing modes for parsing incoming bytes.
+     */
+    public enum Mode {
+        /**
+         * Split messages when a delimiter is encountered.
+         */
+        Delimeter,
+        /**
+         * Extract messages using a regex pattern.
+         */
+        Pattern,
+        /**
+         * Emit messages when the buffer reaches a maximum length.
+         */
+        Length,
+        /**
+         * Apply all available framing rules.
+         */
+        All
+    }
+
+    /**
+     * Creates a listener bound to a specific serial port and connection.
+     *
+     * @param delimiter  the message delimiter characters
+     * @param comPort    the serial port instance being monitored
+     * @param connection the owning connection for status and error reporting
+     */
+    public DataSerialPortBytesListener(char[] delimiter, SerialPort comPort, CerialPortConnection<?> connection) {
+        this.delimiter = delimiter;
+        this.comPort = comPort;
+        this.connection = connection;
+        String loggerName = (connection.getComPort() == 0) ? "cerial" : "COM" + connection.getComPort();
+        log = LogUtils.getSpecificRollingLogger(loggerName, "cerial",
+                "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] - [%msg]%n", false);
+    }
+
+    /**
+     * Specifies the jSerialComm events this listener wants to receive.
+     *
+     * @return bitmask of listening events
+     */
+    @Override
+    public int getListeningEvents() {
+        return LISTENING_EVENT_DATA_RECEIVED | LISTENING_EVENT_PORT_DISCONNECTED | LISTENING_EVENT_BREAK_INTERRUPT | LISTENING_EVENT_FRAMING_ERROR | LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR | LISTENING_EVENT_PARITY_ERROR | LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR;
+    }
+
+    /**
+     * Removes all occurrences of a byte value from the array.
+     *
+     * @param array    source byte array
+     * @param toRemove byte value to remove
+     * @return a new byte array without the removed values
+     */
+    public byte[] remove(byte[] array, byte toRemove) {
+        List<Byte> byteList = new ArrayList<>(Arrays.asList(ArrayUtils.toObject(array)));
+        byteList.removeIf(b -> b == toRemove);
+        return ArrayUtils.toPrimitive(byteList.toArray(new Byte[0]));
+    }
+
+    /**
+     * Handles serial port events and routes data or errors to the connection.
+     *
+     * @param event the jSerialComm event
+     */
+    @Override
+    public void serialEvent(SerialPortEvent event) {
+        if (event.getEventType() == LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR) {
+            log.error("❌ Software Overrun Error: {}", event.toString());
+            connection.onConnectError(new SerialPortException("Software Overrun Error - " + event.toString()), ComPortStatus.GeneralException);
+        } else if (event.getEventType() == LISTENING_EVENT_PARITY_ERROR) {
+            log.error("❌ Software Parity Error: {}", event.toString());
+            connection.onConnectError(new SerialPortException("Software Parity Error - " + event.toString()), ComPortStatus.GeneralException);
+        } else if (event.getEventType() == LISTENING_EVENT_FRAMING_ERROR) {
+            log.error("❌ Hardware Framing Error: {}", event.toString());
+            connection.onConnectError(new SerialPortException("Hardware Framing Error - " + event.toString()), ComPortStatus.GeneralException);
+        } else if (event.getEventType() == LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR) {
+            log.error("❌ Hardware Firmware Overrun Error: {}", event.toString());
+            connection.onConnectError(new SerialPortException("Hardware Firmware Overrun Error - " + event.toString()), ComPortStatus.GeneralException);
+        } else if (event.getEventType() == LISTENING_EVENT_BREAK_INTERRUPT) {
+            log.error("❌ Hardware Break Interrupt Error: {}", event.toString());
+            connection.onConnectError(new SerialPortException("Hardware Break Interrupt Error - " + event.toString()), ComPortStatus.GeneralException);
+        } else if (event.getEventType() == LISTENING_EVENT_PORT_DISCONNECTED) {
+            log.error("🔌 Port disconnected: {}", event.toString());
+            connection.onConnectError(new SerialPortException("Port disconnected - " + event.toString()), ComPortStatus.Offline);
+        } else if (event.getEventType() == LISTENING_EVENT_DATA_RECEIVED) {
+            byte[] newData = event.getReceivedData();
+            processReceivedBytes(newData);
+        }
+    }
+
+    private StringBuilder buffer = new StringBuilder();
+
+    /**
+     * Processes raw bytes, applies framing rules, and emits messages when complete.
+     *
+     * @param newData the received bytes
+     */
+    public void processReceivedBytes(byte[] newData) {
+        newData = remove(newData, (byte) 0);
+        String message = "";
+
+        Set<Character> delChars = new java.util.HashSet<>();
+        for (char c : delimiter) {
+            delChars.add(c);
+        }
+        for (byte b : newData) {
+            if (b == 0) {
+                continue;
+            }
+            Character c = (char) b;
+            if ((!allowedChars.isEmpty() && !allowedChars.contains((char) b)) && (delimiter.length > 0 && !delChars.contains(c))) {
+                log.warn("⚠️ Character not allowed on serial port - Port [{}] - Character [{}] - Resetting buffer", getConnection().getComPort(), (char) b);
+                buffer = new StringBuilder();
+                continue;
+            }
+
+            // Common append logic
+            if (buffer.length() >= maxBufferLength) {
+                log.warn("⚠️ Buffer limit reached on serial port - Port [{}] - Rolling data", getConnection().getComPort());
+                buffer.deleteCharAt(0);
+            }
+            buffer.append((char) b);
+
+            boolean messageProcessed = false;
+
+            // 1. Check Pattern
+            if ((mode == Mode.All || mode == Mode.Pattern) && patternMatch != null) {
+                Matcher matcher = patternMatch.matcher(buffer.toString());
+                if (matcher.find()) {
+                    message = matcher.group();
+                    try {
+                        if (!Strings.isNullOrEmpty(message)) {
+                            log.info("📥 RX] - Port [{}] - Message: [{}]", portNumberFormat.format(connection.getComPort()), message);
+                            processMessage(message.getBytes());
+                            messageProcessed = true;
+                        }
+                    } catch (Throwable e) {
+                        log.error("❌ Error processing received message: {}", e.getMessage(), e);
+                    }
+                    buffer = new StringBuilder(buffer.substring(matcher.end()));
+                }
+            }
+
+            // 2. Check Delimiter (if not already processed by pattern)
+            if (!messageProcessed && (mode == Mode.All || mode == Mode.Delimeter)) {
+                boolean foundDelimiter = false;
+                for (char delimiterCheck : delimiter) {
+                    if (delimiterCheck == b) {
+                        foundDelimiter = true;
+                        break;
+                    }
+                }
+
+                if (foundDelimiter) {
+                    // Message is everything in buffer minus the delimiter (optional, depending on how it was handled before)
+                    // Looking at previous implementation, it included everything in buffer.
+                    message = buffer.toString();
+                    try {
+                        log.info("RX] - [" + portNumberFormat.format(connection.getComPort()) + "] - [" + message.trim());
+                        processMessage(message.getBytes());
+                        messageProcessed = true;
+                    } catch (Throwable e) {
+                        log.error(e.getMessage(), e);
+                    }
+                    buffer = new StringBuilder();
+                }
+            }
+
+            // 3. Check Length (if not already processed)
+            if (!messageProcessed && (mode == Mode.All || mode == Mode.Length)) {
+                if (buffer.length() >= maxBufferLength) {
+                    message = buffer.toString();
+                    try {
+                        log.info("RX] - [" + portNumberFormat.format(connection.getComPort()) + "] - [" + message.trim());
+                        processMessage(message.getBytes());
+                        messageProcessed = true;
+                    } catch (Throwable e) {
+                        log.error(e.getMessage(), e);
+                    }
+                    buffer = new StringBuilder();
+                }
+            }
+        }
+
+    }
+
+    /**
+     * Dispatches a parsed message via the configured consumer in a Vertx worker thread.
+     *
+     * @param newData the message bytes to deliver
+     */
+    private void processMessage(byte[] newData) {
+        try {
+            var vertx = IGuiceContext.get(Vertx.class);
+            vertx.executeBlocking(() -> {
+                com.guicedee.client.scopes.CallScoper callScoper = null;
+                boolean started = false;
+                try {
+                    callScoper = IGuiceContext.get(com.guicedee.client.scopes.CallScoper.class);
+                    if (!callScoper.isStartedScope()) {
+                        callScoper.enter();
+                        started = true;
+                    }
+                    CallScopeProperties properties = IGuiceContext.get(CallScopeProperties.class);
+                    if (properties.getSource() == null || properties.getSource() == CallScopeSource.Unknown) {
+                        properties.setSource(CallScopeSource.SerialPort);
+                    }
+                    properties
+                            .getProperties()
+                            .put("ComPort", comPort);
+                    properties
+                            .getProperties()
+                            .put("CerialPortConnection", connection);
+                    getConnection().setComPortStatus(Running);
+
+                    CerialPortConnection.addBytesRead(newData.length, getConnection().getComPortName());
+
+                    if (IGuiceContext.instance().getScanResult().getClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).loadClasses().stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
+                    {
+                        IGuiceContext.get(CerialDataTracer.class).onDataReceived(newData, connection, getComPortRead());
+                    }
+                    else {
+                        if(getComPortRead() != null)
+                            getComPortRead().accept(newData, getComPort());
+                    }
+
+                } catch (Throwable T) {
+                    log.error("Error on ComPort [" + connection.getComPort() + "] Receipt", T);
+                } finally {
+                    if (started && callScoper != null) {
+                        callScoper.exit();
+                    }
+                }
+                return true;
+            }, false);
+        } catch (Exception e) {
+            log.error("Error on running bytes serial ComPort [" + connection.getComPort() + "] Receipt", e);
+        }
+    }
+
+    /**
+     * Handles exceptions raised by jSerialComm during data callbacks.
+     *
+     * @param e the exception thrown by the listener
+     */
+    @Override
+    public void catchException(Exception e) {
+        log.error("❌ Error on ComPort [{}] Receipt: {}", connection.getComPort(), e.getMessage(), e);
+    }
 }

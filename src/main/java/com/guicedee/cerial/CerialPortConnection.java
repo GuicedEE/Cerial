@@ -10,6 +10,13 @@ import com.google.common.base.Strings;
 import com.guicedee.cerial.enumerations.*;
 import com.guicedee.cerial.implementations.ComPortEvents;
 import com.guicedee.cerial.implementations.DataSerialPortMessageListener;
+import com.guicedee.telemetry.annotations.SpanAttribute;
+import com.guicedee.telemetry.annotations.Trace;
+import com.guicedee.telemetry.implementations.OpenTelemetrySDKConfigurator;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.LongCounter;
+import io.opentelemetry.api.trace.Span;
 import com.guicedee.client.IGuiceContext;
 import com.guicedee.client.services.lifecycle.IGuicePreDestroy;
 import com.guicedee.client.utils.LogUtils;
@@ -104,6 +111,59 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     portNumberFormat.setMinimumFractionDigits(0);
     portNumberFormat.setMaximumFractionDigits(0);
     portNumberFormat.setMaximumIntegerDigits(3);
+  }
+
+  private static Object bytesWrittenCounter;
+  private static Object bytesReadCounter;
+
+  private static void initializeMetrics()
+  {
+    try
+    {
+      if (IGuiceContext.instance().getScanResult().getClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).loadClasses().stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
+      {
+        bytesWrittenCounter = OpenTelemetrySDKConfigurator.getOpenTelemetry()
+                                                          .getMeter("com.guicedee.cerial")
+                                                          .counterBuilder("serial.bytes_written")
+                                                          .setDescription("Total bytes written to serial ports")
+                                                          .setUnit("bytes")
+                                                          .build();
+
+        bytesReadCounter = OpenTelemetrySDKConfigurator.getOpenTelemetry()
+                                                       .getMeter("com.guicedee.cerial")
+                                                       .counterBuilder("serial.bytes_read")
+                                                       .setDescription("Total bytes read from serial ports")
+                                                       .setUnit("bytes")
+                                                       .build();
+      }
+    }
+    catch (Throwable ignore)
+    {
+    }
+  }
+
+  public static void addBytesWritten(long bytes, String portName)
+  {
+    if (bytesWrittenCounter == null)
+    {
+      initializeMetrics();
+    }
+    if (bytesWrittenCounter instanceof LongCounter)
+    {
+      ((LongCounter) bytesWrittenCounter).add(bytes, Attributes.of(AttributeKey.stringKey("serial.port"), portName));
+    }
+  }
+
+  public static void addBytesRead(long bytes, String portName)
+  {
+    if (bytesReadCounter == null)
+    {
+      initializeMetrics();
+    }
+    if (bytesReadCounter instanceof LongCounter)
+    {
+      ((LongCounter) bytesReadCounter).add(bytes, Attributes.of(AttributeKey.stringKey("serial.port"), portName));
+    }
   }
 
   /**
@@ -344,6 +404,8 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
    *
    * @return this instance for method chaining
    */
+  @Trace
+  @SpanAttribute("connection_status")
   public J connect()
   {
     if (getConnectionPort() != null && getConnectionPort().isOpen())
@@ -354,6 +416,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     try
     {
       getLog().info("🚀 Opening serial port '{}' at {} baud", getComPortName(), getBaudRate().toInt());
+      connectionPort.setComPortTimeouts(com.fazecast.jSerialComm.SerialPort.TIMEOUT_NONBLOCKING, 0, 0);
       connectionPort.openPort();
       if (connectionPort.isOpen())
       {
@@ -383,6 +446,8 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
    *
    * @return this instance for method chaining
    */
+  @Trace
+  @SpanAttribute("connection_status")
   public J disconnect()
   {
     if (connectionPort != null && connectionPort.isOpen())
@@ -613,7 +678,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   }
 
   @JsonProperty
-  protected String getComPortName()
+  public String getComPortName()
   {
     String name;
     if (OSValidator.isWindows())
@@ -656,8 +721,14 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
         }
         try
         {
-          connectionPort.writeBytes(message.getBytes(StandardCharsets.UTF_8), message.length());
+          if (IGuiceContext.instance().getScanResult().getClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).loadClasses().stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
+          {
+            IGuiceContext.get(com.guicedee.cerial.implementations.CerialWriteTracer.class).onWrite(message, getComPortName(), getComPort());
+          }
+          byte[] bytes = message.getBytes(StandardCharsets.UTF_8);
+          connectionPort.writeBytes(bytes, bytes.length);
           getLog().info("📤 TX - Port {} - Message: {}", portNumberFormat.format(getComPort()), message.trim());
+          addBytesWritten(bytes.length, getComPortName());
         }
         catch (Throwable t)
         {

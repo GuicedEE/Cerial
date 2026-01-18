@@ -33,6 +33,21 @@
         </dependency>
 
 
+        <dependency>
+            <groupId>com.guicedee.services</groupId>
+            <artifactId>telemetry-core</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>com.guicedee</groupId>
+            <artifactId>guiced-telemetry</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+
+
+
         <!--<dependency>
             <groupId>com.guicedee.services</groupId>
             <artifactId>jSerialComm</artifactId>
