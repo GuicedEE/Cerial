@@ -15,6 +15,10 @@ import java.util.function.BiConsumer;
 @Log4j2
 public class CerialDataTracer {
 
+    public static java.lang.invoke.MethodHandles.Lookup getModuleLookup() {
+        return java.lang.invoke.MethodHandles.lookup();
+    }
+
     /**
      * Traces the received data and delegates to the provided comPortRead consumer.
      *

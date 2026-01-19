@@ -2,7 +2,7 @@ module guiced.cerial.test {
     requires com.guicedee.cerial;
     requires com.guicedee.guicedinjection;
     requires com.guicedee.services.health;
-    requires io.opentelemetry.api;
+    requires com.guicedee.services.opentelemetry;
 
     requires org.junit.platform.commons;
     requires org.junit.jupiter.api;

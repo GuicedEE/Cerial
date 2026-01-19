@@ -14,6 +14,10 @@ import java.nio.charset.StandardCharsets;
 @Log4j2
 public class CerialWriteTracer {
 
+    public static java.lang.invoke.MethodHandles.Lookup getModuleLookup() {
+        return java.lang.invoke.MethodHandles.lookup();
+    }
+
     /**
      * Traces the write operation and records message details.
      *

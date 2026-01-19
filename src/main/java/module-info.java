@@ -18,7 +18,7 @@ module com.guicedee.cerial {
 
     requires static com.guicedee.health;
     requires static com.guicedee.telemetry;
-    requires static io.opentelemetry.api;
+    requires static com.guicedee.services.opentelemetry;
 
     requires transitive com.fazecast.jSerialComm;
     requires transitive org.apache.commons.lang3;
@@ -27,6 +27,7 @@ module com.guicedee.cerial {
 
     exports com.guicedee.cerial;
     opens com.guicedee.cerial to com.google.guice,com.fasterxml.jackson.databind,com.guicedee.health;
+    opens com.guicedee.cerial.implementations to com.google.guice,com.fasterxml.jackson.databind,com.guicedee.health;
 
     exports com.guicedee.cerial.enumerations;
     exports com.guicedee.cerial.implementations;
