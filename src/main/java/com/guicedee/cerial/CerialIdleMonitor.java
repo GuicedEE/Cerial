@@ -67,7 +67,7 @@ public class CerialIdleMonitor
         initialDelay = 2;
         period = 10;
         //10 minutes
-        seconds = (int) TimeUnit.SECONDS.toSeconds(120);
+        seconds = 120;
     }
 
     /**
@@ -83,7 +83,7 @@ public class CerialIdleMonitor
         this(connection);
         this.initialDelay = initialDelay;
         this.period = period;
-        this.seconds = (int) TimeUnit.SECONDS.toSeconds(seconds);
+        this.seconds = seconds;
     }
 
     /**
