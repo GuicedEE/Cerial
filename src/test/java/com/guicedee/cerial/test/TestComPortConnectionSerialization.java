@@ -3,7 +3,7 @@ package com.guicedee.cerial.test;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.guicedee.cerial.CerialPortConnection;
 import com.guicedee.cerial.enumerations.*;
-import com.guicedee.services.jsonrepresentation.IJsonRepresentation;
+import com.guicedee.modules.services.jsonrepresentation.IJsonRepresentation;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

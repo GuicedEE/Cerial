@@ -20,7 +20,7 @@ import io.opentelemetry.api.trace.Span;
 import com.guicedee.client.IGuiceContext;
 import com.guicedee.client.services.lifecycle.IGuicePreDestroy;
 import com.guicedee.client.utils.LogUtils;
-import com.guicedee.services.jsonrepresentation.IJsonRepresentation;
+import com.guicedee.modules.services.jsonrepresentation.IJsonRepresentation;
 import io.vertx.core.Vertx;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -18,7 +18,7 @@ module com.guicedee.cerial {
 
     requires static com.guicedee.health;
     requires static com.guicedee.telemetry;
-    requires static com.guicedee.services.opentelemetry;
+    requires static com.guicedee.modules.services.opentelemetry;
 
     requires transitive com.fazecast.jSerialComm;
     requires transitive org.apache.commons.lang3;

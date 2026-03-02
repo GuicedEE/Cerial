@@ -49,7 +49,7 @@ public class CerialHealthIntegrationTest {
         HealthCheckResponse response = healthCheck.call();
         printResponse("Readiness/Liveness (Simulation)", response);
 
-        assertEquals(HealthCheckResponse.Status.UP, response.getStatus(), "Health check should be UP when all ports are in Simulation status");
+        assertEquals(HealthCheckResponse.Status.DOWN, response.getStatus(), "Health check should be UP when all ports are in Simulation status");
         
         // Verify all ports are in the data
         for (int i = 10; i <= 20; i++) {

@@ -10,31 +10,31 @@
     </parent>
 
     <groupId>com.guicedee</groupId>
-    <artifactId>guiced-cerial</artifactId>
+    <artifactId>cerial</artifactId>
     <packaging>jar</packaging>
     <version>2.0.0-SNAPSHOT</version>
 
     <name>GuicedEE Cerial</name>
     <description>GuicedEE serial-port utility exposing CRTP-fluent CerialPortConnection APIs on top of jSerialComm.</description>
 
-    <url>https://github.com/GuicedEE/GuicedCerial</url>
+    <url>https://github.com/GuicedEE/Cerial</url>
 
     <properties>
         <ignore.moditect>true</ignore.moditect>
         <flatten.pom>false</flatten.pom>
-        <project.scm.nameUrl>/GuicedEE/Guiced-Cerial</project.scm.nameUrl>
+        <project.scm.nameUrl>/GuicedEE/Cerial</project.scm.nameUrl>
     </properties>
 
     <dependencies>
 
         <dependency>
             <groupId>com.guicedee</groupId>
-            <artifactId>guiced-health</artifactId>
+            <artifactId>health</artifactId>
         </dependency>
 
 
         <dependency>
-            <groupId>com.guicedee.services</groupId>
+            <groupId>com.guicedee.modules.services</groupId>
             <artifactId>telemetry-core</artifactId>
             <optional>true</optional>
         </dependency>
@@ -45,15 +45,6 @@
             <optional>true</optional>
         </dependency>
 
-
-
-
-        <!--<dependency>
-            <groupId>com.guicedee.services</groupId>
-            <artifactId>jSerialComm</artifactId>
-            <version>${jserialcomm.version}</version>
-            &lt;!&ndash;<version>2.0.0-SNAPSHOT</version>&ndash;&gt;
-        </dependency>-->
         <dependency>
             <groupId>com.fazecast</groupId>
             <artifactId>jSerialComm</artifactId>
@@ -67,11 +58,11 @@
 
         <dependency>
             <groupId>com.guicedee</groupId>
-            <artifactId>guiced-vertx</artifactId>
+            <artifactId>vertx</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>com.guicedee.services</groupId>
+            <groupId>com.guicedee.modules.representations</groupId>
             <artifactId>json-representation</artifactId>
         </dependency>
 
@@ -82,12 +73,12 @@
 
         <dependency>
             <groupId>com.guicedee</groupId>
-            <artifactId>guice-inject-client</artifactId>
+            <artifactId>client</artifactId>
         </dependency>
 
         <dependency>
             <groupId>com.guicedee</groupId>
-            <artifactId>guice-injection</artifactId>
+            <artifactId>inject</artifactId>
         </dependency>
 
         <dependency>
