@@ -1,4 +1,4 @@
-name: GuicedEE Cerial Library
+name: GuicedEE Cerial
 on:
   workflow_dispatch:
     inputs:
