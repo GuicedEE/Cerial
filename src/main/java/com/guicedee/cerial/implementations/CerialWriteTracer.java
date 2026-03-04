@@ -14,6 +14,17 @@ import java.nio.charset.StandardCharsets;
 @Log4j2
 public class CerialWriteTracer {
 
+    /**
+     * Creates a new write tracer.
+     */
+    public CerialWriteTracer() {
+    }
+
+    /**
+     * Returns the module lookup for reflective access.
+     *
+     * @return the method handles lookup
+     */
     public static java.lang.invoke.MethodHandles.Lookup getModuleLookup() {
         return java.lang.invoke.MethodHandles.lookup();
     }

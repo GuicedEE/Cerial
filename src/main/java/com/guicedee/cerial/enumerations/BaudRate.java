@@ -53,13 +53,13 @@ public enum BaudRate
         return Integer.parseInt(toString());
     }
 
-    @JsonCreator
     /**
      * Parses a baud rate from a string, with or without the leading '$'.
      *
      * @param s the string value (e.g., "9600" or "$9600")
      * @return the matching {@link BaudRate}, or null if input is null
      */
+    @JsonCreator
     public static BaudRate from(String s)
     {
         if (s == null)

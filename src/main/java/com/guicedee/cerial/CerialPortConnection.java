@@ -142,6 +142,12 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     }
   }
 
+  /**
+   * Records bytes written to a serial port for telemetry.
+   *
+   * @param bytes    the number of bytes written
+   * @param portName the name of the serial port
+   */
   public static void addBytesWritten(long bytes, String portName)
   {
     if (bytesWrittenCounter == null)
@@ -154,6 +160,12 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     }
   }
 
+  /**
+   * Records bytes read from a serial port for telemetry.
+   *
+   * @param bytes    the number of bytes read
+   * @param portName the name of the serial port
+   */
   public static void addBytesRead(long bytes, String portName)
   {
     if (bytesReadCounter == null)
@@ -252,25 +264,35 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   private Integer idleTimerSeconds = 120;
 
 
+  /** The output stream for writing to the serial port. */
   @JsonIgnore
   private OutputStream writer = null;
 
+  /** Callback invoked when the port status changes. */
   @JsonIgnore
-
   private BiConsumer<CerialPortConnection<?>, ComPortStatus> comPortStatusUpdate;
 
+  /** Callback invoked when a port error occurs. */
   @JsonIgnore
-
   private TriConsumer<Throwable, CerialPortConnection<?>, ComPortStatus> comPortError;
+
+  /** The idle monitor for this connection. */
   @JsonIgnore
   private CerialIdleMonitor monitor;
 
+  /** The timestamp of the last received message. */
   private LocalDateTime lastMessageTime;
 
+  /** The end-of-message delimiter characters. */
   @Setter
   @Getter
   private char[] endOfMessage = new char[]{'\n'};
 		
+  /**
+   * Resets all connection parameters to their defaults.
+   *
+   * @return this connection for method chaining
+   */
   public J reset()
   {
     baudRate = BaudRate.$9600;
@@ -285,19 +307,25 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /** Whether the connection is currently running. */
   private boolean run = false;
+
+  /** The data listener attached to the serial port. */
   @JsonIgnore
   private SerialPortDataListener serialPortMessageListener;
 
-  // Reconnect/backoff state
+  /** Timer ID for reconnect attempts, or {@code -1} if none. */
   @JsonIgnore
   private long reconnectTimerId = -1L;
 
+  /** Number of reconnect attempts made. */
   @JsonIgnore
   private int reconnectAttempts = 0;
 
-  // Configure reconnect backoff (in seconds)
+  /** Initial delay in seconds before a reconnect attempt. */
   private int initialReconnectDelaySeconds = 1;
+
+  /** Maximum delay in seconds between reconnect attempts. */
   private int maxReconnectDelaySeconds = 60;
 
   /**
@@ -500,6 +528,12 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     cancelReconnectTimer();
   }
 
+  /**
+   * Schedules a reconnect attempt with exponential backoff.
+   *
+   * @param reason the reason for reconnecting
+   * @return this connection for method chaining
+   */
   protected J scheduleReconnect(String reason)
   {
     if (connectionPort != null && connectionPort.isOpen())
@@ -541,6 +575,11 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Prepares the connection before opening the serial port.
+   *
+   * @return this connection for method chaining
+   */
   public J beforeConnect()
   {
       IGuiceContext.instance()
@@ -553,6 +592,11 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Performs post-connection setup including data listener registration and idle monitoring.
+   *
+   * @return this connection for method chaining
+   */
   public J afterConnect()
   {
     setComPortStatus(Silent);
@@ -578,6 +622,11 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Configures XON/XOFF flow control on the serial port.
+   *
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setXOnXOff()
   {
     connectionPort.setFlowControl(SerialPort.FLOW_CONTROL_XONXOFF_IN_ENABLED | SerialPort.FLOW_CONTROL_XONXOFF_OUT_ENABLED);
@@ -585,6 +634,11 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Configures RTS/CTS hardware flow control on the serial port.
+   *
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setRts()
   {
     connectionPort.setFlowControl(SerialPort.FLOW_CONTROL_RTS_ENABLED | SerialPort.FLOW_CONTROL_CTS_ENABLED);
@@ -593,6 +647,11 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   }
 
 
+  /**
+   * Configures DSR/DTR hardware flow control on the serial port.
+   *
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setDsr()
   {
     connectionPort.setFlowControl(SerialPort.FLOW_CONTROL_DSR_ENABLED | SerialPort.FLOW_CONTROL_DTR_ENABLED);
@@ -601,6 +660,13 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   }
 
 
+  /**
+   * Handles a connection error by notifying the error callback, disconnecting, and scheduling reconnect.
+   *
+   * @param e      the exception that occurred
+   * @param status the resulting port status
+   * @return this connection for method chaining
+   */
   public J onConnectError(Throwable e, ComPortStatus status)
   {
        getLog().error("❌ Error on '{}': {}", getComPortName(), e.getMessage(), e);
@@ -622,12 +688,25 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Registers a callback for port status changes.
+   *
+   * @param comPortStatusUpdate the callback to invoke on status change
+   * @return this connection for method chaining
+   */
   public J onComPortStatusUpdate(BiConsumer<CerialPortConnection<?>, ComPortStatus> comPortStatusUpdate)
   {
     this.comPortStatusUpdate = comPortStatusUpdate;
     return (J) this;
   }
 
+  /**
+   * Sets the port status and optionally notifies the status update callback.
+   *
+   * @param comPortStatus the new port status
+   * @param update        if empty or first element is {@code true}, the callback is notified
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setComPortStatus(ComPortStatus comPortStatus, boolean... update)
   {
     if (this.comPortStatus != comPortStatus && (
@@ -644,6 +723,11 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Registers this connection for cleanup during application shutdown.
+   *
+   * @return this connection for method chaining
+   */
   protected J registerShutdownHook()
   {
     IGuiceContext.instance()
@@ -654,12 +738,22 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Called after the serial port has been shut down.
+   *
+   * @return this connection for method chaining
+   */
   protected J afterShutdown()
   {
     getLog().info("🌟 Shutdown completed for '{}'", getComPortName());
     return (J) this;
   }
 
+  /**
+   * Called before the serial port is shut down; stops the idle monitor.
+   *
+   * @return this connection for method chaining
+   */
   protected J beforeShutdown()
   {
     getLog().info("⚠️ Shutting down serial port '{}'", getComPortName());
@@ -667,6 +761,12 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Hook for subclasses to apply custom configuration to the serial port.
+   *
+   * @param instance the serial port instance to configure
+   * @return this connection for method chaining
+   */
   protected J configure(SerialPort instance)
   {
     return (J) this;
@@ -677,6 +777,11 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Returns the platform-specific COM port name (e.g., "COM1" on Windows, "/dev/ttyUSB0" on Linux).
+   *
+   * @return the COM port name
+   */
   @JsonProperty
   public String getComPortName()
   {
@@ -794,18 +899,36 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     }
   }
 
+  /**
+   * Sets the COM port number.
+   *
+   * @param comPort the COM port number
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setComPort(Integer comPort)
   {
     this.comPort = comPort;
     return (J) this;
   }
 
+  /**
+   * Sets the baud rate.
+   *
+   * @param baudRate the baud rate
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setBaudRate(BaudRate baudRate)
   {
     this.baudRate = baudRate;
     return (J) this;
   }
 
+  /**
+   * Sets the port status and notifies the status update callback if changed.
+   *
+   * @param comPortStatus the new port status
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setComPortStatus(ComPortStatus comPortStatus)
   {
     if (this.comPortStatus != comPortStatus && this.comPortStatusUpdate != null)
@@ -817,54 +940,108 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Sets the COM port type.
+   *
+   * @param comPortType the port type
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setComPortType(ComPortType comPortType)
   {
     this.comPortType = comPortType;
     return (J) this;
   }
 
+  /**
+   * Sets the data bits configuration.
+   *
+   * @param dataBits the data bits
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setDataBits(DataBits dataBits)
   {
     this.dataBits = dataBits;
     return (J) this;
   }
 
+  /**
+   * Sets the flow control mode.
+   *
+   * @param flowControl the flow control mode
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setFlowControl(FlowControl flowControl)
   {
     this.flowControl = flowControl;
     return (J) this;
   }
 
+  /**
+   * Sets the parity mode.
+   *
+   * @param parity the parity mode
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setParity(Parity parity)
   {
     this.parity = parity;
     return (J) this;
   }
 
+  /**
+   * Sets the stop bits configuration.
+   *
+   * @param stopBits the stop bits
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setStopBits(StopBits stopBits)
   {
     this.stopBits = stopBits;
     return (J) this;
   }
 
+  /**
+   * Sets the read buffer size.
+   *
+   * @param bufferSize the buffer size in bytes
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setBufferSize(Integer bufferSize)
   {
     this.bufferSize = bufferSize;
     return (J) this;
   }
 
+  /**
+   * Sets the output stream writer for the serial port.
+   *
+   * @param writer the output stream
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setWriter(OutputStream writer)
   {
     this.writer = writer;
     return (J) this;
   }
 
+  /**
+   * Sets the callback for port status changes.
+   *
+   * @param comPortStatusUpdate the status update callback
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setComPortStatusUpdate(BiConsumer<CerialPortConnection<?>, ComPortStatus> comPortStatusUpdate)
   {
     this.comPortStatusUpdate = comPortStatusUpdate;
     return (J) this;
   }
 
+  /**
+   * Sets the callback for data read events.
+   *
+   * @param comPortRead the data read callback
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setComPortRead(BiConsumer<byte[], com.fazecast.jSerialComm.SerialPort> comPortRead)
   {
     if (this.serialPortMessageListener == null)
@@ -877,18 +1054,36 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     return (J) this;
   }
 
+  /**
+   * Sets the callback for port errors.
+   *
+   * @param comPortError the error callback
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setComPortError(TriConsumer<Throwable, CerialPortConnection<?>, ComPortStatus> comPortError)
   {
     this.comPortError = comPortError;
     return (J) this;
   }
 
+  /**
+   * Sets the idle monitor for this connection.
+   *
+   * @param monitor the idle monitor
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setMonitor(CerialIdleMonitor monitor)
   {
     this.monitor = monitor;
     return (J) this;
   }
 
+  /**
+   * Sets the timestamp of the last received message.
+   *
+   * @param lastMessageTime the last message timestamp
+   * @return this connection for method chaining
+   */
   public @org.jspecify.annotations.NonNull J setLastMessageTime(LocalDateTime lastMessageTime)
   {
     this.lastMessageTime = lastMessageTime;

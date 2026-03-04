@@ -1,9 +1,9 @@
-/**
- * Serial port integration module that exposes core APIs, enumerations, and Guice bindings.
- */
 import com.guicedee.cerial.implementations.CerialPortsBindings;
 import com.guicedee.client.services.lifecycle.IGuiceModule;
 
+/**
+ * Serial port integration module that exposes core APIs, enumerations, and Guice bindings.
+ */
 module com.guicedee.cerial {
     requires static lombok;
 

@@ -20,13 +20,12 @@ public class CerialPortConnectionProvider implements Provider<CerialPortConnecti
     {
         this.comPortNumber = comPortNumber;
     }
-    @Override
-
     /**
      * Builds a new connection using a default baud rate.
      *
      * @return a new {@link CerialPortConnection} instance
      */
+    @Override
     public CerialPortConnection get()
     {
         CerialPortConnection cerialPortConnection = new CerialPortConnection(comPortNumber, BaudRate.$9600);

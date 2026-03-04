@@ -16,6 +16,15 @@ import java.util.Set;
 @Singleton
 public class CerialHealthCheck implements HealthCheck {
 
+    /**
+     * Creates a new Cerial health check.
+     */
+    public CerialHealthCheck() {
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public HealthCheckResponse call() {
         HealthCheckResponseBuilder builder = HealthCheckResponse.named("Cerial Connections");

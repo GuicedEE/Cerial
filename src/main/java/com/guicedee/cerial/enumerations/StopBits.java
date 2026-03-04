@@ -37,13 +37,13 @@ public enum StopBits
         return stopBitsValue;
     }
 
-    @JsonCreator
     /**
      * Parses a stop-bits value from a string, with or without the leading '$'.
      *
      * @param name the string value (e.g., "1", "2", or "1_5")
      * @return the matching {@link StopBits}, or null if input is null
      */
+    @JsonCreator
     public static StopBits from(String name)
     {
         if (name == null)

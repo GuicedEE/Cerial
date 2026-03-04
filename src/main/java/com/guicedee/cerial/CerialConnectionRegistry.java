@@ -11,6 +11,12 @@ public class CerialConnectionRegistry {
     private static final Set<CerialPortConnection<?>> activeConnections = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     /**
+     * Creates a new connection registry instance.
+     */
+    public CerialConnectionRegistry() {
+    }
+
+    /**
      * Registers a connection.
      *
      * @param connection The connection to register.

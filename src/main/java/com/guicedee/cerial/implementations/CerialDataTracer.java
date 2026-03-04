@@ -15,6 +15,17 @@ import java.util.function.BiConsumer;
 @Log4j2
 public class CerialDataTracer {
 
+    /**
+     * Creates a new data tracer.
+     */
+    public CerialDataTracer() {
+    }
+
+    /**
+     * Returns the module lookup for reflective access.
+     *
+     * @return the method handles lookup
+     */
     public static java.lang.invoke.MethodHandles.Lookup getModuleLookup() {
         return java.lang.invoke.MethodHandles.lookup();
     }

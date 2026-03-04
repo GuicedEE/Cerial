@@ -50,13 +50,13 @@ public enum DataBits
         return name().replace("$", "");
     }
 
-    @JsonCreator
     /**
      * Parses a data-bit value from a string, with or without the leading '$'.
      *
      * @param s the string value (e.g., "8" or "$8")
      * @return the matching {@link DataBits}, or null if input is null
      */
+    @JsonCreator
     public static DataBits fromString(String s)
     {
         if(s == null)

@@ -17,6 +17,12 @@ import lombok.extern.java.Log;
 public class CerialPortsBindings extends AbstractModule implements IGuiceModule<CerialPortsBindings>
 {
     /**
+     * Creates a new serial port bindings module.
+     */
+    public CerialPortsBindings() {
+    }
+
+    /**
      * Registers bindings for a wide range of serial port numbers.
      */
     @Override

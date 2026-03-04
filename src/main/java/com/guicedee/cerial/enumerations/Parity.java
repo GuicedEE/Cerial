@@ -42,13 +42,13 @@ public enum Parity
         return parity;
     }
 
-    @JsonCreator
     /**
      * Parses parity from a numeric or textual value.
      *
      * @param value numeric value (e.g., "2") or name (e.g., "Even")
      * @return the matching {@link Parity}, or null if no match
      */
+    @JsonCreator
     public static Parity from(String value)
     {
         if (NumberUtils.isCreatable(value))
