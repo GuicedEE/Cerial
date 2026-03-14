@@ -33,6 +33,7 @@ import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
@@ -351,10 +352,9 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     CerialPortConnection me = this;
     IGuiceContext.getAllLoadedServices()
         .computeIfAbsent(IGuicePreDestroy.class, k -> new TreeSet<>());
-    IGuiceContext.getAllLoadedServices()
-        .get(IGuicePreDestroy.class)
-        .add(me)
-    ;
+    Set set = IGuiceContext.getAllLoadedServices()
+        .get(IGuicePreDestroy.class);
+    set.add(me);
   }
 
   /**
