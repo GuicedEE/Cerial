@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/GuicedEE/Cerial/actions/workflows/build.yml/badge.svg)](https://github.com/GuicedEE/Cerial/actions/workflows/build.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/com.guicedee/cerial)](https://central.sonatype.com/artifact/com.guicedee/cerial)
-[![Maven Snapshot](https://img.shields.io/nexus/s/com.guicedee/cerial?server=https%3A%2F%2Foss.sonatype.org&label=Maven%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/com/guicedee/cerial/)
+[![Snapshot](https://img.shields.io/badge/Snapshot-2.0.0-SNAPSHOT-orange)](https://github.com/GuicedEE/Packages/packages/maven/com.guicedee.cerial)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue)](https://www.apache.org/licenses/LICENSE-2.0)
 
 ![Java 25+](https://img.shields.io/badge/Java-25%2B-green)
