@@ -65,7 +65,6 @@ class CerialPortConnectionReconnectTest {
     @DisplayName("Listeners: PORT_DISCONNECTED is treated as error and triggers onConnectError(Offline)")
     void testListenersTriggerErrorOnDisconnect() {
         // Given
-        @SuppressWarnings("unchecked")
         CerialPortConnection<?> connection = mock(CerialPortConnection.class);
         SerialPort sp = mock(SerialPort.class);
         DataSerialPortMessageListener msgListener = new DataSerialPortMessageListener(new char[]{'\n'}, sp, connection);
