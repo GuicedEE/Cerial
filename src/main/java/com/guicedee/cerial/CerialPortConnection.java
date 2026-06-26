@@ -330,6 +330,21 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   private int maxReconnectDelaySeconds = 60;
 
   /**
+   * Set once the application begins shutting down. Once set, no reconnect attempts will be
+   * scheduled so that ports always close cleanly and never block graceful shutdown.
+   */
+  @JsonIgnore
+  private volatile boolean shuttingDown = false;
+
+  /**
+   * Maximum time, in milliseconds, to wait for a single serial port to physically close during
+   * shutdown before abandoning the wait and continuing. This guarantees a misbehaving native
+   * driver can never block the JVM from terminating.
+   */
+  @JsonIgnore
+  private long closeTimeoutMillis = 2000L;
+
+  /**
    * Creates a new serial port connection with the specified parameters and idle timeout.
    *
    * @param comPort  the COM port number (e.g., 1 for COM1)
@@ -349,10 +364,10 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     this.idleTimerSeconds = seconds;
     this.setMonitor(new CerialIdleMonitor(this, 2, 120, seconds));
     CerialConnectionRegistry.register(this);
-    CerialPortConnection me = this;
+    @SuppressWarnings("rawtypes") CerialPortConnection me = this;
     IGuiceContext.getAllLoadedServices()
         .computeIfAbsent(IGuicePreDestroy.class, k -> new TreeSet<>());
-    Set set = IGuiceContext.getAllLoadedServices()
+    @SuppressWarnings("rawtypes") Set set = IGuiceContext.getAllLoadedServices()
         .get(IGuicePreDestroy.class);
     set.add(me);
   }
@@ -536,6 +551,13 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
    */
   protected J scheduleReconnect(String reason)
   {
+    if (shuttingDown)
+    {
+      // Never schedule reconnects while the application is shutting down - this keeps ports
+      // from being re-opened and blocking graceful shutdown.
+      getLog().debug("🛑 Skipping reconnect for '{}' - shutdown in progress", getComPortName());
+      return (J) this;
+    }
     if (connectionPort != null && connectionPort.isOpen())
     {
       // Already connected
@@ -861,14 +883,132 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   @Override
   public void onDestroy()
   {
-    getLog().info("⚠️ onDestroy invoked for '{}'", getComPortName());
-    CerialConnectionRegistry.unregister(this);
-    if (connectionPort != null)
+    // Mark shutdown first so any in-flight callbacks (errors, idle checks, reconnect timers)
+    // do not attempt to re-open the port while we are tearing it down.
+    shuttingDown = true;
+    run = false;
+    try
     {
-      if (connectionPort.isOpen())
+      getLog().info("⚠️ onDestroy invoked for '{}'", getComPortName());
+    }
+    catch (Throwable ignore)
+    {
+      // logging must never block shutdown
+    }
+
+    CerialConnectionRegistry.unregister(this);
+
+    // Cancel any pending reconnect attempt so it cannot fire mid-shutdown.
+    try
+    {
+      cancelReconnectTimer();
+    }
+    catch (Throwable t)
+    {
+      safeLogClose("cancel reconnect timer", t);
+    }
+
+    // Stop the idle monitor's periodic Vert.x timer.
+    try
+    {
+      if (monitor != null)
       {
-        disconnect();
+        monitor.end();
       }
+    }
+    catch (Throwable t)
+    {
+      safeLogClose("stop idle monitor", t);
+    }
+
+    closePortQuietly();
+  }
+
+  /**
+   * Closes the underlying serial port without ever blocking the shutdown sequence.
+   * <p>
+   * The data listener is removed first (a still-attached listener/read thread can cause the
+   * native {@code closePort()} call to hang), and the actual close is performed on a short-lived
+   * daemon thread bounded by {@link #closeTimeoutMillis}. If the native driver fails to return
+   * within that window the wait is abandoned so the JVM can continue terminating.
+   */
+  private void closePortQuietly()
+  {
+    final SerialPort port = connectionPort;
+    if (port == null)
+    {
+      return;
+    }
+
+    // Detach the listener before closing - this is what most commonly blocks closePort().
+    try
+    {
+      port.removeDataListener();
+    }
+    catch (Throwable t)
+    {
+      safeLogClose("remove data listener", t);
+    }
+
+    if (!port.isOpen())
+    {
+      try
+      {
+        setComPortStatus(Offline);
+      }
+      catch (Throwable ignore)
+      {
+      }
+      return;
+    }
+
+    final Thread closer = new Thread(() -> {
+      try
+      {
+        port.closePort();
+      }
+      catch (Throwable t)
+      {
+        safeLogClose("close port", t);
+      }
+    }, "cerial-close-" + getComPortName());
+    closer.setDaemon(true);
+    closer.start();
+    try
+    {
+      closer.join(closeTimeoutMillis);
+      if (closer.isAlive())
+      {
+        safeLogClose("close port", new IllegalStateException(
+            "closePort() did not return within " + closeTimeoutMillis + "ms - abandoning to allow shutdown"));
+      }
+    }
+    catch (InterruptedException ie)
+    {
+      Thread.currentThread().interrupt();
+    }
+
+    try
+    {
+      setComPortStatus(Offline);
+    }
+    catch (Throwable ignore)
+    {
+    }
+  }
+
+  /**
+   * Logs a close-time failure without ever propagating an exception that could halt shutdown.
+   */
+  private void safeLogClose(String action, Throwable t)
+  {
+    try
+    {
+      getLog().warn("⚠️ Failed to {} for '{}' during shutdown: {}", action, getComPortName(), t.getMessage());
+    }
+    catch (Throwable ignore)
+    {
+      // never let logging block shutdown
     }
   }
 

@@ -131,8 +131,25 @@ public class CerialIdleMonitor
      */
     public void end()
     {
-        var vertx = IGuiceContext.get(Vertx.class);
-        vertx.cancelTimer(timerId);
+        if (timerId == 0L)
+        {
+            // Monitor was never started (or already stopped) - nothing to cancel.
+            return;
+        }
+        try
+        {
+            var vertx = IGuiceContext.get(Vertx.class);
+            vertx.cancelTimer(timerId);
+        }
+        catch (Throwable t)
+        {
+            // Never let idle-monitor teardown block shutdown.
+            log.fine(() -> "Failed to cancel idle monitor timer: " + t.getMessage());
+        }
+        finally
+        {
+            timerId = 0L;
+        }
     }
 
 }

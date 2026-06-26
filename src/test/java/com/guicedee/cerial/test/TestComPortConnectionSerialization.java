@@ -1,6 +1,6 @@
 package com.guicedee.cerial.test;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import com.guicedee.cerial.CerialPortConnection;
 import com.guicedee.cerial.enumerations.*;
 import com.guicedee.modules.services.jsonrepresentation.IJsonRepresentation;
@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class TestComPortConnectionSerialization
 {
     @Test
-    public void testSerialization() throws JsonProcessingException
+    public void testSerialization() throws JacksonException
     {
         CerialPortConnection<?> cpc = new CerialPortConnection<>(6, BaudRate.$9600);
         cpc.setDataBits(DataBits.$8);
