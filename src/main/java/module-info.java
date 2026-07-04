@@ -1,5 +1,7 @@
 import com.guicedee.cerial.implementations.CerialPortsBindings;
+import com.guicedee.cerial.implementations.CerialPreDestroy;
 import com.guicedee.client.services.lifecycle.IGuiceModule;
+import com.guicedee.client.services.lifecycle.IGuicePreDestroy;
 
 /**
  * Serial port integration module that exposes core APIs, enumerations, and Guice bindings.
@@ -33,5 +35,6 @@ module com.guicedee.cerial {
     exports com.guicedee.cerial.implementations;
 
     provides IGuiceModule with CerialPortsBindings;
+    provides IGuicePreDestroy with CerialPreDestroy;
 
 }

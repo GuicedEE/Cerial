@@ -33,8 +33,6 @@ import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
@@ -364,12 +362,6 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     this.idleTimerSeconds = seconds;
     this.setMonitor(new CerialIdleMonitor(this, 2, 120, seconds));
     CerialConnectionRegistry.register(this);
-    @SuppressWarnings("rawtypes") CerialPortConnection me = this;
-    IGuiceContext.getAllLoadedServices()
-        .computeIfAbsent(IGuicePreDestroy.class, k -> new TreeSet<>());
-    @SuppressWarnings("rawtypes") Set set = IGuiceContext.getAllLoadedServices()
-        .get(IGuicePreDestroy.class);
-    set.add(me);
   }
 
   /**
