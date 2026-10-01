@@ -62,6 +62,41 @@ class CerialPortConnectionReconnectTest {
     }
 
     @Test
+    @DisplayName("A failed open uses the scheduled retry instead of reopening for every sender attempt")
+    void failedOpenDoesNotCauseAnImmediateOpenBurst() {
+        var connection = new com.guicedee.cerial.test.support.TestableCerialPortConnection(97, BaudRate.$9600, 1);
+        when(mockPort.isOpen()).thenReturn(false);
+        when(mockPort.openPort()).thenReturn(false);
+        connection.setConnectionPort(mockPort);
+
+        try {
+            connection.connect();
+            for (int i = 0; i < 12; i++) {
+                connection.connect();
+            }
+
+            verify(mockPort, times(1)).openPort();
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    @Test
+    @DisplayName("Stopping a closed port cancels its pending reconnect")
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void disconnectCancelsPendingReconnect() throws Exception {
+        var connection = new com.guicedee.cerial.test.support.TestableCerialPortConnection(96, BaudRate.$9600, 1);
+        when(mockPort.isOpen()).thenReturn(false);
+        connection.setConnectionPort(mockPort);
+
+        connection.triggerScheduleReconnect("unit-test");
+        connection.disconnect();
+        Thread.sleep(1200);
+
+        verify(mockPort, never()).openPort();
+    }
+
+    @Test
     @DisplayName("Listeners: PORT_DISCONNECTED is treated as error and triggers onConnectError(Offline)")
     void testListenersTriggerErrorOnDisconnect() {
         // Given

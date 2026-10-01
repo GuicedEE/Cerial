@@ -315,7 +315,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
 
   /** Timer ID for reconnect attempts, or {@code -1} if none. */
   @JsonIgnore
-  private long reconnectTimerId = -1L;
+  private volatile long reconnectTimerId = -1L;
 
   /** Number of reconnect attempts made. */
   @JsonIgnore
@@ -441,18 +441,24 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
    */
   @Trace
   @SpanAttribute("connection_status")
-  public J connect()
+  public synchronized J connect()
   {
     if (getConnectionPort() != null && getConnectionPort().isOpen())
     {
       return (J) this;
     }
-    beforeConnect();
+    // A failed open already has a scheduled retry. Sender attempts must not race that retry
+    // or call the native openPort() once per pending message.
+    if (reconnectTimerId != -1L)
+    {
+      return (J) this;
+    }
     try
     {
+      beforeConnect();
       getLog().info("🚀 Opening serial port '{}' at {} baud", getComPortName(), getBaudRate().toInt());
       connectionPort.setComPortTimeouts(com.fazecast.jSerialComm.SerialPort.TIMEOUT_NONBLOCKING, 0, 0);
-      connectionPort.openPort();
+      boolean opened = connectionPort.openPort();
       if (connectionPort.isOpen())
       {
         afterConnect();
@@ -463,6 +469,8 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
       else
       {
         setComPortStatus(Missing);
+        getLog().warn("⚠️ Serial port '{}' did not open (openPort returned {})", getComPortName(), opened);
+        scheduleReconnect("openPort returned " + opened + " and the port is still closed");
       }
     }
     catch (Throwable e)
@@ -483,8 +491,10 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
    */
   @Trace
   @SpanAttribute("connection_status")
-  public J disconnect()
+  public synchronized J disconnect()
   {
+    // Explicit stops must also cancel a pending retry, even when the port is already closed.
+    cancelReconnectTimer();
     if (connectionPort != null && connectionPort.isOpen())
     {
       getLog().info("⚠️ Disconnecting serial port '{}'", getComPortName());
@@ -541,7 +551,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
    * @param reason the reason for reconnecting
    * @return this connection for method chaining
    */
-  protected J scheduleReconnect(String reason)
+  protected synchronized J scheduleReconnect(String reason)
   {
     if (shuttingDown)
     {
@@ -565,25 +575,33 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
     getLog().warn("🔄 Scheduling reconnect for '{}' in {}s (attempt {}) - Reason: {}", getComPortName(), delaySeconds, reconnectAttempts, reason);
     Vertx vertx = IGuiceContext.get(Vertx.class);
     reconnectTimerId = vertx.setTimer(delaySeconds * 1000L, id -> {
-      reconnectTimerId = -1L;
-      try
+      synchronized (this)
       {
-        getLog().info("🔌 Attempting reconnect to '{}' (attempt {})", getComPortName(), reconnectAttempts);
-        connect();
-        if (connectionPort != null && connectionPort.isOpen())
+        // A stop may have cancelled this timer while its callback was waiting for the port lock.
+        if (reconnectTimerId != id)
         {
-          getLog().info("✅ Reconnected to '{}'", getComPortName());
-          resetReconnectBackoff();
+          return;
         }
-        else
+        reconnectTimerId = -1L;
+        try
         {
-          // Not yet connected; schedule next attempt
-          scheduleReconnect("Port not open after connect() attempt");
+          getLog().info("🔌 Attempting reconnect to '{}' (attempt {})", getComPortName(), reconnectAttempts);
+          connect();
+          if (connectionPort != null && connectionPort.isOpen())
+          {
+            getLog().info("✅ Reconnected to '{}'", getComPortName());
+            resetReconnectBackoff();
+          }
+          else
+          {
+            // Not yet connected; schedule next attempt
+            scheduleReconnect("Port not open after connect() attempt");
+          }
         }
-      }
-      catch (Throwable t)
-      {
-        onConnectError(t, ComPortStatus.GeneralException);
+        catch (Throwable t)
+        {
+          onConnectError(t, ComPortStatus.GeneralException);
+        }
       }
     });
     return (J) this;
