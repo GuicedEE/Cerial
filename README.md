@@ -26,7 +26,7 @@ Built on [jSerialComm](https://fazecast.github.io/jSerialComm/) · [Vert.x](http
 <summary>Gradle (Kotlin DSL)</summary>
 
 ```kotlin
-implementation("com.guicedee:cerial:2.2.0")
+implementation("com.guicedee:cerial:2.4.0")
 ```
 </details>
 
