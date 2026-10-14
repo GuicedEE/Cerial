@@ -192,7 +192,7 @@ public class DataSerialPortMessageListener implements SerialPortMessageListener,
 
                 CerialPortConnection.addBytesRead(newData.length, connection.getComPortName());
 
-                if (IGuiceContext.instance().getScanResult().getClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).loadClasses().stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
+                if (IGuiceContext.instance().getScanResult().getAllClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
                 {
                     IGuiceContext.get(CerialDataTracer.class).onDataReceived(newData, connection, getComPortRead());
                 }else {

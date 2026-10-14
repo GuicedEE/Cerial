@@ -119,7 +119,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
   {
     try
     {
-      if (IGuiceContext.instance().getScanResult().getClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).loadClasses().stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
+      if (IGuiceContext.instance().getScanResult().getAllClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
       {
         bytesWrittenCounter = OpenTelemetrySDKConfigurator.getOpenTelemetry()
                                                           .getMeter("com.guicedee.cerial")
@@ -858,7 +858,7 @@ public class CerialPortConnection<J extends CerialPortConnection<J>> implements 
         }
         try
         {
-          if (IGuiceContext.instance().getScanResult().getClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).loadClasses().stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
+          if (IGuiceContext.instance().getScanResult().getAllClassesImplementing(com.guicedee.client.services.lifecycle.IGuiceModule.class).stream().anyMatch(c -> c.getSimpleName().equals("TraceModule")))
           {
             IGuiceContext.get(com.guicedee.cerial.implementations.CerialWriteTracer.class).onWrite(message, getComPortName(), getComPort());
           }
